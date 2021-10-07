@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "ggmail"
+version = "0.1.0"
+description = "Manage gmail account using python"
+authors = ["dylandoamaral <do.amaral.dylan@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pydantic = "^1.8.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+black = "^20.8b1"
+isort = "^5.7.0"
+pytest-cov = "^2.11.1"
+pylint = "^2.6.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pylint.masters]
+max-line-length = 88
+disable = ["E501", "W503", "C0114"]
+ignore = [
+    ".git",
+    "__pycache__",
+    "setup.py",
+    "build",
+    "dist",
+    "releases",
+    ".idea",
+    ".venv",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".vscode",
+    ".github",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.pylint.format]
+good-names = ["fn", "i", "j"]
