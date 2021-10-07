@@ -26,15 +26,12 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
       - name: Install dependencies
         run: |
-          source $HOME/.poetry/env
           poetry install -vvv
       - name: Check
         run: |
-          source $HOME/.poetry/env
           make check
       - name: Test
         run: |
-          source $HOME/.poetry/env
           make test
       - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v1
