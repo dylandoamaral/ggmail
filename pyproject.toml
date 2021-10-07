@@ -5,7 +5,7 @@ description = "Manage gmail account using python"
 authors = ["dylandoamaral <do.amaral.dylan@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.6.1,<4"
 pydantic = "^1.8.2"
 
 [tool.poetry.dev-dependencies]
