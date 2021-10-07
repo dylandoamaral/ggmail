@@ -1,4 +1,3 @@
-from functools import cached_property
 from imaplib import IMAP4, IMAP4_SSL
 from typing import List
 
