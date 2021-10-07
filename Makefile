@@ -6,6 +6,5 @@ format:
 	@poetry run isort ggmail tests
 
 check:
-	@poetry run pylint ggmail tests
 	@poetry run black ggmail tests --check
 	@poetry run isort ggmail tests --check
