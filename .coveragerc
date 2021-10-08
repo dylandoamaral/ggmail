@@ -1,2 +1,2 @@
 [run]
-omit = ggmail/__version__.py
+omit = ggmail/__version__.py,ggmail/stackoverflow.py
