@@ -7,9 +7,10 @@ from .exception import (
     AlreadyConnected,
     LoginFailed,
     MailboxFetchingFailed,
+    MailboxNotFound,
     NotConnected,
 )
-from .mailbox import Mailbox, mailbox_factory
+from .mailbox import Mailbox, MailboxKind, mailbox_factory
 
 
 class Account(BaseModel):
@@ -78,3 +79,106 @@ class Account(BaseModel):
             mailbox_factory(raw_mailbox_description)
             for raw_mailbox_description in raw_list
         ]
+
+    def mailboxes_from_kind(self, kind: MailboxKind) -> List[Mailbox]:
+        """
+        Return mailboxes of a particular kind
+
+        :param kind: The kind of mailbox
+        :return: The list of mailboxes
+        """
+        mailboxes = self.fetch_mailboxes()
+        return [mailbox for mailbox in mailboxes if mailbox.kind is kind]
+
+    def mailbox_from_kind(self, kind: MailboxKind) -> Mailbox:
+        """
+        Return a mailbox of a particular kind
+
+        :param kind: The kind of mailbox
+        :raises MailboxNotFound: If the mailbox is not found
+        :return: The first mailbox of that kind
+        """
+        try:
+            return self.mailboxes_from_kind(kind)[0]
+        except IndexError:
+            raise MailboxNotFound(f"Mailbox of kind {kind} not found")
+
+    def inbox(self) -> Mailbox:
+        """
+        Return inbox mailbox
+
+        :return: The inbox mailbox
+        """
+        return self.mailbox_from_kind(MailboxKind.INBOX)
+
+    def trash(self) -> Mailbox:
+        """
+        Return trash mailbox
+
+        :return: The trash mailbox
+        """
+        return self.mailbox_from_kind(MailboxKind.TRASH)
+
+    def drafts(self) -> Mailbox:
+        """
+        Return drafts mailbox
+
+        :return: The drafts mailbox
+        """
+        return self.mailbox_from_kind(MailboxKind.DRAFTS)
+
+    def important(self) -> Mailbox:
+        """
+        Return important mailbox
+
+        :return: The important mailbox
+        """
+        return self.mailbox_from_kind(MailboxKind.IMPORTANT)
+
+    def sent(self) -> Mailbox:
+        """
+        Return important mailbox
+
+        :return: The important mailbox
+        """
+        return self.mailbox_from_kind(MailboxKind.SENT)
+
+    def no_select(self) -> Mailbox:
+        """
+        Return no select mailbox
+
+        :return: The no select mailbox
+        """
+        return self.mailbox_from_kind(MailboxKind.NOSELECT)
+
+    def flagged(self) -> Mailbox:
+        """
+        Return flagged mailbox
+
+        :return: The flagged mailbox
+        """
+        return self.mailbox_from_kind(MailboxKind.FLAGGED)
+
+    def all_(self) -> Mailbox:
+        """
+        Return all mailbox
+
+        :return: The all mailbox
+        """
+        return self.mailbox_from_kind(MailboxKind.ALL)
+
+    def junk(self) -> Mailbox:
+        """
+        Return junk mailbox
+
+        :return: The junk mailbox
+        """
+        return self.mailbox_from_kind(MailboxKind.JUNK)
+
+    def customs(self) -> List[Mailbox]:
+        """
+        Return custom mailboxes
+
+        :return: The custom mailboxes
+        """
+        return self.mailboxes_from_kind(MailboxKind.CUSTOM)
