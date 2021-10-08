@@ -88,6 +88,7 @@ class TestAccount:
             pytest.param(MailboxKind.NOSELECT, "no_select", id="no_select"),
             pytest.param(MailboxKind.FLAGGED, "flagged", id="flagged"),
             pytest.param(MailboxKind.JUNK, "junk", id="junk"),
+            pytest.param(MailboxKind.ALL, "all_", id="all"),
         ],
     )
     def test_mailbox_with_kind(self, fetch_mailboxes_mock, account, kind, function):
