@@ -2,7 +2,7 @@ from enum import Enum, auto
 
 from pydantic import BaseModel
 
-from .stackoverflow import imaputf7decode
+from .utf7 import decode
 
 
 class MailboxKind(Enum):
@@ -36,7 +36,7 @@ def mailbox_factory(raw_mailbox_description: bytes) -> Mailbox:
     mailbox_description = raw_mailbox_description.decode("utf8")
     mailbox_description = mailbox_description.replace('"', "")
     raw_tags, path = mailbox_description.split("/", 1)
-    path = imaputf7decode(path.strip())
+    path = decode(path.strip())
     label = path.split("/")[-1]
     tags = raw_tags.replace(" ", "")[1:-1].split("\\")[1:]
     has_children = "HasChildren" in tags

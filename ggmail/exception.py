@@ -16,3 +16,7 @@ class NotConnected(Exception):
 
 class AlreadyConnected(Exception):
     pass
+
+
+class WrongUTF7String(Exception):
+    pass
