@@ -10,6 +10,10 @@ class MailboxParsingFailed(Exception):
     pass
 
 
+class MailboxNotFound(Exception):
+    pass
+
+
 class NotConnected(Exception):
     pass
 

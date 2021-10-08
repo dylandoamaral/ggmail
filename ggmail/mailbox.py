@@ -7,15 +7,15 @@ from .utf7 import decode
 
 
 class MailboxKind(Enum):
-    DRAFTS = auto()
+    INBOX = auto()
     TRASH = auto()
+    DRAFTS = auto()
     IMPORTANT = auto()
     SENT = auto()
     NOSELECT = auto()
     FLAGGED = auto()
     ALL = auto()
     JUNK = auto()
-    INBOX = auto()
     CUSTOM = auto()
 
 
