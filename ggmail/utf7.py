@@ -1,4 +1,5 @@
 import base64
+
 from .exception import WrongUTF7String
 
 # https://stackoverflow.com/questions/12776679/imap-folder-path-encoding-imap-utf-7-for-

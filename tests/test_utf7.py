@@ -1,7 +1,8 @@
-from ggmail.utf7 import decode
 import pytest
 from pytest import raises
+
 from ggmail.exception import WrongUTF7String
+from ggmail.utf7 import decode
 
 
 class TestUTF7Decode:
