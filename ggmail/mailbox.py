@@ -1,6 +1,7 @@
 from enum import Enum, auto
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
+from imaplib import IMAP4_SSL
 
 from .utf7 import decode
 
@@ -25,8 +26,16 @@ class Mailbox(BaseModel):
     has_children: bool
     raw: bytes
 
+    _imap: IMAP4_SSL = PrivateAttr()
 
-def mailbox_factory(raw_mailbox_description: bytes) -> Mailbox:
+    def rename(self, label: str):
+        if path == self.path:
+            return
+        self._imap.rename(self.label, label)
+        self.label = label
+
+
+def mailbox_factory(raw_mailbox_description: bytes, imap: IMAP4_SSL) -> Mailbox:
     """
     Create a mailbox from a raw byte description of the mailbox
 
@@ -55,4 +64,5 @@ def mailbox_factory(raw_mailbox_description: bytes) -> Mailbox:
         kind=kind,
         has_children=has_children,
         raw=raw_mailbox_description,
+        _imap=imap,
     )
