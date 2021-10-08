@@ -2,6 +2,8 @@ from enum import Enum, auto
 
 from pydantic import BaseModel
 
+from .stackoverflow import imaputf7decode
+
 
 class MailboxKind(Enum):
     DRAFTS = auto()
@@ -21,6 +23,7 @@ class Mailbox(BaseModel):
     path: str
     kind: MailboxKind
     has_children: bool
+    raw: bytes
 
 
 def mailbox_factory(raw_mailbox_description: bytes) -> Mailbox:
@@ -31,10 +34,11 @@ def mailbox_factory(raw_mailbox_description: bytes) -> Mailbox:
     :return: The mailbox
     """
     mailbox_description = raw_mailbox_description.decode("utf8")
-    mailbox_description = mailbox_description.replace(" ", "").replace('"', "")
+    mailbox_description = mailbox_description.replace('"', "")
     raw_tags, path = mailbox_description.split("/", 1)
+    path = imaputf7decode(path.strip())
     label = path.split("/")[-1]
-    tags = raw_tags[1:-1].split("\\")[1:]
+    tags = raw_tags.replace(" ", "")[1:-1].split("\\")[1:]
     has_children = "HasChildren" in tags
 
     if label == "INBOX":
@@ -45,4 +49,10 @@ def mailbox_factory(raw_mailbox_description: bytes) -> Mailbox:
         kind_tag = [tag for tag in tags if tag not in ["HasChildren", "HasNoChildren"]]
         kind = MailboxKind.CUSTOM if not kind_tag else MailboxKind[kind_tag[0].upper()]
 
-    return Mailbox(label=label, path=path, kind=kind, has_children=has_children)
+    return Mailbox(
+        label=label,
+        path=path,
+        kind=kind,
+        has_children=has_children,
+        raw=raw_mailbox_description,
+    )
