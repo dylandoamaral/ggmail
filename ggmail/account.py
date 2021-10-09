@@ -15,9 +15,6 @@ from .mailbox import Mailbox, MailboxKind, mailbox_factory
 
 
 class Account(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
-
     username: str
     password: SecretStr
 
