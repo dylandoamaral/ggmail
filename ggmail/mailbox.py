@@ -33,7 +33,7 @@ class Mailbox(BaseModel):
 
     def rename(self, label: str):
         """
-        Rename a mailbox label
+        Rename the mailbox
 
         :param path: The new label of the mailbox
         """
@@ -41,11 +41,17 @@ class Mailbox(BaseModel):
 
     def move(self, path: str):
         """
-        Move a mailbox, every nested mailbox of the mailbox will be moved with it
+        Move the mailbox, every nested mailbox of the mailbox will be moved with it
 
         :param path: The name of the new path
         """
         self._account.move_mailbox(self, path)
+
+    def select(self):
+        """
+        Select the mailbox
+        """
+        self._account.select_mailbox(self)
 
 
 def mailbox_factory(raw_mailbox_description: bytes, account) -> Mailbox:
