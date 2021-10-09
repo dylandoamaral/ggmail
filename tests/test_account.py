@@ -1,5 +1,5 @@
 from imaplib import IMAP4, IMAP4_SSL
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 from pytest import fixture, raises
@@ -11,6 +11,8 @@ from ggmail.exception import (
     MailboxAlreadyExists,
     MailboxFetchingFailed,
     MailboxNotFound,
+    MessageFetchingFailed,
+    MessageSearchingFailed,
     NotConnected,
 )
 from ggmail.mailbox import Mailbox, MailboxKind
@@ -21,6 +23,20 @@ from ggmail.mailbox import Mailbox, MailboxKind
 def logged_account(imap_login_mock, account):
     account.login()
     return account
+
+
+@fixture
+def logged_account_with_inbox(logged_account):
+    mailbox = Mailbox(
+        label="Inbox",
+        path="Inbox",
+        kind=MailboxKind.INBOX,
+        has_children=True,
+        raw=b"",
+        _account=logged_account,
+    )
+    logged_account._mailboxes = [mailbox]
+    return logged_account
 
 
 class TestAccountLogin:
@@ -292,7 +308,7 @@ class TestAccountMoveMailbox:
         assert trash.path == "Master/Nested"
 
     @patch.object(Account, "mailboxes")
-    def test_mobe_mailbox_optimisation(self, account_mailboxes_mock, logged_account):
+    def test_move_mailbox_optimisation(self, account_mailboxes_mock, logged_account):
         account_mailboxes_mock.return_value = [
             Mailbox(
                 label="Master",
@@ -308,9 +324,7 @@ class TestAccountMoveMailbox:
         inbox.move("Master")
 
     @patch.object(Account, "mailboxes")
-    def test_rename_mailbox_already_exists(
-        self, account_mailboxes_mock, logged_account
-    ):
+    def test_move_mailbox_already_exists(self, account_mailboxes_mock, logged_account):
         account_mailboxes_mock.return_value = [
             Mailbox(
                 label="Master",
@@ -333,6 +347,10 @@ class TestAccountMoveMailbox:
 
         with raises(MailboxAlreadyExists):
             inbox.move("Main")
+
+    def test_move_mailbox_not_connected(self, account):
+        with raises(NotConnected):
+            account.move_mailbox(Mock(), "")
 
 
 class TestAccountSelectMailbox:
@@ -374,3 +392,91 @@ class TestAccountSelectMailbox:
         logged_account.select_mailbox_from_path("Master")
 
         assert logged_account.selected_mailbox == mailbox
+
+    def test_select_mailbox_not_connected(self, account):
+        with raises(NotConnected):
+            account.select_mailbox(Mock())
+
+
+class TestAccountSearchMessage:
+    @patch.object(IMAP4_SSL, "search")
+    def test_search_message_ids(self, imap_search_mock, logged_account):
+        imap_search_mock.return_value = "OK", [b"1 2 3"]
+        message_ids = logged_account.search_message_ids()
+        assert message_ids == ["1", "2", "3"]
+
+    @patch.object(IMAP4_SSL, "search")
+    def test_search_message_ids_empty(self, imap_search_mock, logged_account):
+        imap_search_mock.return_value = "OK", [b""]
+        message_ids = logged_account.search_message_ids()
+        assert message_ids == []
+
+    @patch.object(IMAP4_SSL, "search")
+    def test_search_message_ids_ko(self, imap_search_mock, logged_account):
+        imap_search_mock.return_value = "KO", []
+
+        with raises(MessageSearchingFailed):
+            logged_account.search_message_ids()
+
+    def test_search_message_ids_not_connected(self, account):
+        with raises(NotConnected):
+            account.search_message_ids()
+
+    @patch.object(IMAP4_SSL, "fetch")
+    @patch.object(Account, "search_message_ids")
+    @patch("ggmail.account.message_factory")
+    def test_search_messages(
+        self,
+        message_factory_mock,
+        account_search_message_ids_mock,
+        imap_fetch_mock,
+        logged_account,
+    ):
+        account_search_message_ids_mock.return_value = ["1", "2"]
+        imap_fetch_mock.return_value = "OK", [b"msg1", b")", b"msg2", b")"]
+        message_factory_mock.return_value = Mock()
+
+        messages = logged_account.search_messages()
+
+        assert len(messages) == 2
+        message_factory_mock.assert_has_calls([call(b"msg1"), call(b"msg2")])
+
+    @patch.object(IMAP4_SSL, "select")
+    @patch.object(IMAP4_SSL, "fetch")
+    @patch.object(Account, "search_message_ids")
+    @patch("ggmail.account.message_factory")
+    def test_search_messages_from_mailbox(
+        self,
+        message_factory_mock,
+        account_search_message_ids_mock,
+        imap_fetch_mock,
+        imap_select_mock,
+        logged_account_with_inbox,
+    ):
+        account_search_message_ids_mock.return_value = ["1", "2"]
+        imap_fetch_mock.return_value = "OK", [b"msg1", b")", b"msg2", b")"]
+        message_factory_mock.return_value = Mock()
+
+        inbox = logged_account_with_inbox.inbox()
+        messages = inbox.search()
+
+        assert len(messages) == 2
+        message_factory_mock.assert_has_calls([call(b"msg1"), call(b"msg2")])
+
+    @patch.object(IMAP4_SSL, "fetch")
+    @patch.object(Account, "search_message_ids")
+    def test_search_messages_ko(
+        self,
+        account_search_message_ids_mock,
+        imap_fetch_mock,
+        logged_account,
+    ):
+        account_search_message_ids_mock.return_value = ["1", "2"]
+        imap_fetch_mock.return_value = "KO", []
+
+        with raises(MessageFetchingFailed):
+            logged_account.search_messages()
+
+    def test_search_message_not_connected(self, account):
+        with raises(NotConnected):
+            account.search_messages()

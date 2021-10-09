@@ -1,7 +1,17 @@
+# Account exception
 class LoginFailed(Exception):
     pass
 
 
+class NotConnected(Exception):
+    pass
+
+
+class AlreadyConnected(Exception):
+    pass
+
+
+# Mailbox exception
 class MailboxFetchingFailed(Exception):
     pass
 
@@ -18,13 +28,15 @@ class MailboxAlreadyExists(Exception):
     pass
 
 
-class NotConnected(Exception):
+# Message exception
+class MessageSearchingFailed(Exception):
     pass
 
 
-class AlreadyConnected(Exception):
+class MessageFetchingFailed(Exception):
     pass
 
 
+# Utf exception
 class WrongUTF7String(Exception):
     pass
