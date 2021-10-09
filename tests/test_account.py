@@ -25,6 +25,20 @@ def logged_account(imap_login_mock, account):
     return account
 
 
+@fixture
+def logged_account_with_inbox(logged_account):
+    mailbox = Mailbox(
+        label="Inbox",
+        path="Inbox",
+        kind=MailboxKind.INBOX,
+        has_children=True,
+        raw=b"",
+        _account=logged_account,
+    )
+    logged_account._mailboxes = [mailbox]
+    return logged_account
+
+
 class TestAccountLogin:
     @patch.object(IMAP4_SSL, "login")
     def test_login_success(self, imap_login_mock, account):
@@ -423,6 +437,28 @@ class TestAccountSearchMessage:
         message_factory_mock.return_value = Mock()
 
         messages = logged_account.search_messages()
+
+        assert len(messages) == 2
+        message_factory_mock.assert_has_calls([call(b"msg1"), call(b"msg2")])
+
+    @patch.object(IMAP4_SSL, "select")
+    @patch.object(IMAP4_SSL, "fetch")
+    @patch.object(Account, "search_message_ids")
+    @patch("ggmail.account.message_factory")
+    def test_search_messages_from_mailbox(
+        self,
+        message_factory_mock,
+        account_search_message_ids_mock,
+        imap_fetch_mock,
+        imap_select_mock,
+        logged_account_with_inbox,
+    ):
+        account_search_message_ids_mock.return_value = ["1", "2"]
+        imap_fetch_mock.return_value = "OK", [b"msg1", b")", b"msg2", b")"]
+        message_factory_mock.return_value = Mock()
+
+        inbox = logged_account_with_inbox.inbox()
+        messages = inbox.search()
 
         assert len(messages) == 2
         message_factory_mock.assert_has_calls([call(b"msg1"), call(b"msg2")])

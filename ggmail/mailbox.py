@@ -1,8 +1,12 @@
 from enum import Enum, auto
 from imaplib import IMAP4_SSL
+from typing import List
 
 from pydantic import BaseModel, PrivateAttr
 
+from .message import Message
+from .policy import Policy
+from .policy import all_ as all_policy
 from .utf7 import decode
 
 
@@ -52,6 +56,17 @@ class Mailbox(BaseModel):
         Select the mailbox
         """
         self._account.select_mailbox(self)
+
+    def search(self, policy: Policy = all_policy) -> List[Message]:
+        """
+        Search all messages from the mailbox according to the policy, the mailbox become
+        the selected mailbox
+
+        :param policy: The policy to fetch message, defaults to all_
+        :return: The list of messages
+        """
+        self.select()
+        return self._account.search_messages(policy)
 
 
 def mailbox_factory(raw_mailbox_description: bytes, account) -> Mailbox:

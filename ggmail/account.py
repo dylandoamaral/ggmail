@@ -80,7 +80,7 @@ class Account(BaseModel):
         if not self.is_connected:
             raise NotConnected("You should be connected to perform this operation")
 
-        if not self._mailboxes or force:
+        if not self._mailboxes and force:
             status, raw_response = self._imap.list()
 
             if status != "OK":
@@ -290,7 +290,7 @@ class Account(BaseModel):
         """
         Search all message ids from the selected mailbox according to the policy
 
-        :param policy: The policy to fetch message, defaults to All()
+        :param policy: The policy to fetch message, defaults to all_
         :return: The list of ids
         """
         if not self.is_connected:
@@ -312,7 +312,7 @@ class Account(BaseModel):
         """
         Search all messages from the selected mailbox according to the policy
 
-        :param policy: The policy to fetch message, defaults to All()
+        :param policy: The policy to fetch message, defaults to all_
         :return: The list of messages
         """
         if not self.is_connected:
