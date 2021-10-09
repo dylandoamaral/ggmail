@@ -12,12 +12,11 @@ The best way to explain it is actually using an example:
 
 ```python
 from ggmail import Account
-from ggmail.policy import from_, flagged
+from ggmail.policy import from_contains, flagged
 
-account = Account(username="account@gmail.com", password="secret")
-with account:
+with Account(username="account@gmail.com", password="secret") as account:
     inbox = account.inbox()
-    policy = from_("do.amaral.dylan@gmail.com") + flagged
+    policy = from_contains("do.amaral.dylan@gmail.com") + flagged
     messages = inbox.search(policy)
     print([message.subject for message in messages])
 ```
@@ -26,7 +25,7 @@ with account:
 
 ### Why not use imbox instead ?
 
-https://github.com/martinrusev/imbox less high level than ggmail. I wanted something even more human that imbox.
+https://github.com/martinrusev/imbox is less high level than ggmail. I wanted something even more human that imbox.
 
 ### Why not use gmail instead ?
 
