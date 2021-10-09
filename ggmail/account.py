@@ -9,9 +9,14 @@ from .exception import (
     MailboxAlreadyExists,
     MailboxFetchingFailed,
     MailboxNotFound,
+    MessageFetchingFailed,
+    MessageSearchingFailed,
     NotConnected,
 )
 from .mailbox import Mailbox, MailboxKind, mailbox_factory
+from .message import Message, message_factory
+from .policy import Policy
+from .policy import all_ as all_policy
 
 
 class Account(BaseModel):
@@ -76,14 +81,14 @@ class Account(BaseModel):
             raise NotConnected("You should be connected to perform this operation")
 
         if not self._mailboxes or force:
-            status, raw_list = self._imap.list()
+            status, raw_response = self._imap.list()
 
             if status != "OK":
                 raise MailboxFetchingFailed("Unable to fetch mailboxes")
 
             self._mailboxes = [
                 mailbox_factory(raw_mailbox_description, self)
-                for raw_mailbox_description in raw_list
+                for raw_mailbox_description in raw_response
             ]
 
         return self._mailboxes
@@ -227,6 +232,9 @@ class Account(BaseModel):
 
         :param mailbox: The mailbox to select
         """
+        if not self.is_connected:
+            raise NotConnected("You should be connected to perform this operation")
+
         self.selected_mailbox = mailbox
         self._imap.select(mailbox.path)
 
@@ -246,6 +254,9 @@ class Account(BaseModel):
         :param mailbox: The mailbox to move
         :param path: The new path of the mailbox
         """
+        if not self.is_connected:
+            raise NotConnected("You should be connected to perform this operation")
+
         if path == mailbox.path:
             return
 
@@ -274,3 +285,49 @@ class Account(BaseModel):
         parent_path = "/".join(mailbox.path.split("/")[0:-1])
         path = f"{parent_path}/{label}" if parent_path else label
         return self.move_mailbox(mailbox, path)
+
+    def search_message_ids(self, policy: Policy = all_policy) -> List[str]:
+        """
+        Search all message ids from the selected mailbox according to the policy
+
+        :param policy: The policy to fetch message, defaults to All()
+        :return: The list of ids
+        """
+        if not self.is_connected:
+            raise NotConnected("You should be connected to perform this operation")
+
+        status, raw_response = self._imap.search(None, policy.to_imap_standard())
+
+        if status != "OK":
+            raise MessageSearchingFailed("Unable to search message ids")
+
+        raw_list = raw_response[0].decode("utf8").split(" ")
+
+        if raw_list == [""]:
+            return []
+
+        return [n for n in raw_list]
+
+    def search_messages(self, policy: Policy = all_policy) -> List[Message]:
+        """
+        Search all messages from the selected mailbox according to the policy
+
+        :param policy: The policy to fetch message, defaults to All()
+        :return: The list of messages
+        """
+        if not self.is_connected:
+            raise NotConnected("You should be connected to perform this operation")
+
+        message_ids = self.search_message_ids(policy)
+        status, raw_response = self._imap.fetch(
+            ",".join(message_ids), "(BODY.PEEK[] FLAGS)"
+        )
+
+        if status != "OK":
+            raise MessageFetchingFailed("Unable to fetch message")
+
+        return [
+            message_factory(raw_message_description)
+            for (index, raw_message_description) in enumerate(raw_response)
+            if index % 2 == 0
+        ]
