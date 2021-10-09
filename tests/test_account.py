@@ -333,3 +333,44 @@ class TestAccountMoveMailbox:
 
         with raises(MailboxAlreadyExists):
             inbox.move("Main")
+
+
+class TestAccountSelectMailbox:
+    @patch.object(IMAP4_SSL, "select")
+    @patch.object(Account, "mailboxes")
+    def test_select_mailbox(
+        self, account_mailboxes_mock, imap_select_mock, logged_account
+    ):
+        mailbox = Mailbox(
+            label="Master",
+            path="Master",
+            kind=MailboxKind.INBOX,
+            has_children=True,
+            raw=b"",
+            _account=logged_account,
+        )
+        account_mailboxes_mock.return_value = [mailbox]
+
+        inbox = logged_account.inbox()
+        inbox.select()
+
+        assert logged_account.selected_mailbox == mailbox
+
+    @patch.object(IMAP4_SSL, "select")
+    @patch.object(Account, "mailboxes")
+    def test_select_mailbox_from_path(
+        self, account_mailboxes_mock, imap_select_mock, logged_account
+    ):
+        mailbox = Mailbox(
+            label="Master",
+            path="Master",
+            kind=MailboxKind.INBOX,
+            has_children=True,
+            raw=b"",
+            _account=logged_account,
+        )
+        account_mailboxes_mock.return_value = [mailbox]
+
+        logged_account.select_mailbox_from_path("Master")
+
+        assert logged_account.selected_mailbox == mailbox

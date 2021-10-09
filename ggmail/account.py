@@ -1,5 +1,5 @@
 from imaplib import IMAP4, IMAP4_SSL
-from typing import List
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, PrivateAttr, SecretStr
 
@@ -20,6 +20,8 @@ class Account(BaseModel):
 
     _imap: IMAP4_SSL = PrivateAttr()
     _mailboxes: List[Mailbox] = PrivateAttr([])
+
+    selected_mailbox: Optional[Mailbox] = None
 
     is_connected: bool = False
 
@@ -86,6 +88,30 @@ class Account(BaseModel):
 
         return self._mailboxes
 
+    def _mailboxes_from_attr(self, attr: str, value: Any) -> List[Mailbox]:
+        """
+        Retrieve mailboxes from an attribute
+
+        :param attr: The attribute
+        :param attr: The value expected from the attribute
+        :return: The list of mailboxes
+        """
+        mailboxes = self.mailboxes()
+        return [mailbox for mailbox in mailboxes if getattr(mailbox, attr) is value]
+
+    def _mailbox_from_attr(self, attr: str, value: Any) -> List[Mailbox]:
+        """
+        Retrieve the first mailbox from an attribute
+
+        :param attr: The attribute
+        :param attr: The value expected from the attribute
+        :return: The first mailbox
+        """
+        try:
+            return self._mailboxes_from_attr(attr, value)[0]
+        except IndexError:
+            raise MailboxNotFound(f"Mailbox of {attr} {value} not found")
+
     def mailboxes_from_kind(self, kind: MailboxKind) -> List[Mailbox]:
         """
         Return mailboxes of a particular kind
@@ -93,8 +119,7 @@ class Account(BaseModel):
         :param kind: The kind of mailbox
         :return: The list of mailboxes
         """
-        mailboxes = self.mailboxes()
-        return [mailbox for mailbox in mailboxes if mailbox.kind is kind]
+        return self._mailboxes_from_attr("kind", kind)
 
     def mailbox_from_kind(self, kind: MailboxKind) -> Mailbox:
         """
@@ -104,10 +129,17 @@ class Account(BaseModel):
         :raises MailboxNotFound: If the mailbox is not found
         :return: The first mailbox of that kind
         """
-        try:
-            return self.mailboxes_from_kind(kind)[0]
-        except IndexError:
-            raise MailboxNotFound(f"Mailbox of kind {kind} not found")
+        return self._mailbox_from_attr("kind", kind)
+
+    def mailbox_from_path(self, path: str) -> Mailbox:
+        """
+        Return a mailbox of a particular path
+
+        :param path: The path of mailbox
+        :raises MailboxNotFound: If the mailbox is not found
+        :return: The mailbox of that path
+        """
+        return self._mailbox_from_attr("path", path)
 
     def inbox(self) -> Mailbox:
         """
@@ -188,6 +220,24 @@ class Account(BaseModel):
         :return: The custom mailboxes
         """
         return self.mailboxes_from_kind(MailboxKind.CUSTOM)
+
+    def select_mailbox(self, mailbox: Mailbox):
+        """
+        Select a mailbox
+
+        :param mailbox: The mailbox to select
+        """
+        self.selected_mailbox = mailbox
+        self._imap.select(mailbox.path)
+
+    def select_mailbox_from_path(self, path: str):
+        """
+        Select a mailbox from a path
+
+        :param path: The path of tha mailbox
+        """
+        mailbox = self.mailbox_from_path(path)
+        return self.select_mailbox(mailbox)
 
     def move_mailbox(self, mailbox: Mailbox, path: str):
         """
