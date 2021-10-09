@@ -37,6 +37,13 @@ class Account(BaseModel):
         super().__init__(**data)
         self._imap = IMAP4_SSL(self.gmail_imap_host, self.gmail_imap_port)
 
+    def __enter__(self):
+        self.login()
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.logout()
+
     def login(self):
         """
         Login to the gmail account

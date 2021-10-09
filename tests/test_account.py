@@ -71,6 +71,17 @@ class TestAccountLogout:
             account.logout()
 
 
+class TestAccountContextManager:
+    @patch.object(IMAP4_SSL, "logout")
+    @patch.object(IMAP4_SSL, "login")
+    def test_context_manager(self, imap_login_mock, imap_logout_mock, account):
+        with Account(username="test@gmail.com", password="secret") as account:
+            pass
+
+        imap_login_mock.assert_called_once()
+        imap_logout_mock.assert_called_once()
+
+
 class TestAccountMailboxes:
     @patch.object(IMAP4_SSL, "list")
     def test_mailboxes_success(self, imap_list_mock, logged_account):
