@@ -14,6 +14,10 @@ class MailboxNotFound(Exception):
     pass
 
 
+class MailboxAlreadyExists(Exception):
+    pass
+
+
 class NotConnected(Exception):
     pass
 

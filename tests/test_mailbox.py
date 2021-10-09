@@ -1,10 +1,12 @@
+from unittest.mock import Mock
+
 from ggmail.mailbox import MailboxKind, mailbox_factory
 
 
 class TestMailboxFactory:
     def test_mailbox_custom(self):
         raw_mailbox_description = b'(\\HasNoChildren) "/" "Custom"'
-        mailbox = mailbox_factory(raw_mailbox_description)
+        mailbox = mailbox_factory(raw_mailbox_description, Mock())
         assert mailbox.kind is MailboxKind.CUSTOM
         assert mailbox.has_children is False
         assert mailbox.label == "Custom"
@@ -12,7 +14,7 @@ class TestMailboxFactory:
 
     def test_mailbox_inbox(self):
         raw_mailbox_description = b'(\\HasNoChildren) "/" "INBOX"'
-        mailbox = mailbox_factory(raw_mailbox_description)
+        mailbox = mailbox_factory(raw_mailbox_description, Mock())
         assert mailbox.kind is MailboxKind.INBOX
         assert mailbox.has_children is False
         assert mailbox.label == "Inbox"
@@ -20,7 +22,7 @@ class TestMailboxFactory:
 
     def test_mailbox_special(self):
         raw_mailbox_description = b'(\\HasNoChildren \\Junk) "/" "[Gmail]/Spam"'
-        mailbox = mailbox_factory(raw_mailbox_description)
+        mailbox = mailbox_factory(raw_mailbox_description, Mock())
         assert mailbox.kind is MailboxKind.JUNK
         assert mailbox.has_children is False
         assert mailbox.label == "Spam"
@@ -28,7 +30,7 @@ class TestMailboxFactory:
 
     def test_mailbox_with_children(self):
         raw_mailbox_description = b'(\\HasChildren) "/" "Parents"'
-        mailbox = mailbox_factory(raw_mailbox_description)
+        mailbox = mailbox_factory(raw_mailbox_description, Mock())
         assert mailbox.kind is MailboxKind.CUSTOM
         assert mailbox.has_children is True
         assert mailbox.label == "Parents"
@@ -38,7 +40,7 @@ class TestMailboxFactory:
         raw_mailbox_description = (
             b'(\\HasNoChildren \\Sent) "/" "[Gmail]/Messages envoy&AOk-s"'
         )
-        mailbox = mailbox_factory(raw_mailbox_description)
+        mailbox = mailbox_factory(raw_mailbox_description, Mock())
         assert mailbox.kind is MailboxKind.SENT
         assert mailbox.has_children is False
         assert mailbox.label == "Messages envoyés"
@@ -48,7 +50,7 @@ class TestMailboxFactory:
         raw_mailbox_description = (
             b'(\\All \\HasNoChildren) "/" "[Gmail]/Every messages"'
         )
-        mailbox = mailbox_factory(raw_mailbox_description)
+        mailbox = mailbox_factory(raw_mailbox_description, Mock())
         assert mailbox.kind is MailboxKind.ALL
         assert mailbox.has_children is False
         assert mailbox.label == "Every messages"
