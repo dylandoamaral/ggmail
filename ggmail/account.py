@@ -6,6 +6,7 @@ from pydantic import BaseModel, PrivateAttr, SecretStr
 from .exception import (
     AlreadyConnected,
     LoginFailed,
+    MailboxAlreadyExists,
     MailboxFetchingFailed,
     MailboxNotFound,
     NotConnected,
@@ -18,11 +19,12 @@ class Account(BaseModel):
     password: SecretStr
 
     _imap: IMAP4_SSL = PrivateAttr()
+    _mailboxes: List[Mailbox] = PrivateAttr([])
 
-    is_connected = False
+    is_connected: bool = False
 
-    gmail_imap_host = "imap.gmail.com"
-    gmail_imap_port = 993
+    gmail_imap_host: str = "imap.gmail.com"
+    gmail_imap_port: int = 993
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -59,10 +61,11 @@ class Account(BaseModel):
         self._imap.logout()
         self.is_connected = False
 
-    def fetch_mailboxes(self) -> List[Mailbox]:
+    def mailboxes(self, force: bool = True) -> List[Mailbox]:
         """
         Fetch all mailboxes
 
+        :param force: Force the account to reload all mailboxes
         :raises NotConnected: If the user is not connected
         :raises MailboxFetchingFailed: If there is a problem with imap
         :return: The list of mailboxes
@@ -70,15 +73,18 @@ class Account(BaseModel):
         if not self.is_connected:
             raise NotConnected("You should be connected to perform this operation")
 
-        status, raw_list = self._imap.list()
+        if not self._mailboxes or force:
+            status, raw_list = self._imap.list()
 
-        if status != "OK":
-            raise MailboxFetchingFailed("Unable to fetch mailboxes")
+            if status != "OK":
+                raise MailboxFetchingFailed("Unable to fetch mailboxes")
 
-        return [
-            mailbox_factory(raw_mailbox_description)
-            for raw_mailbox_description in raw_list
-        ]
+            self._mailboxes = [
+                mailbox_factory(raw_mailbox_description, self)
+                for raw_mailbox_description in raw_list
+            ]
+
+        return self._mailboxes
 
     def mailboxes_from_kind(self, kind: MailboxKind) -> List[Mailbox]:
         """
@@ -87,7 +93,7 @@ class Account(BaseModel):
         :param kind: The kind of mailbox
         :return: The list of mailboxes
         """
-        mailboxes = self.fetch_mailboxes()
+        mailboxes = self.mailboxes()
         return [mailbox for mailbox in mailboxes if mailbox.kind is kind]
 
     def mailbox_from_kind(self, kind: MailboxKind) -> Mailbox:
@@ -182,3 +188,39 @@ class Account(BaseModel):
         :return: The custom mailboxes
         """
         return self.mailboxes_from_kind(MailboxKind.CUSTOM)
+
+    def move_mailbox(self, mailbox: Mailbox, path: str):
+        """
+        Move a mailbox to another place
+
+        :param mailbox: The mailbox to move
+        :param path: The new path of the mailbox
+        """
+        if path == mailbox.path:
+            return
+
+        old_path = mailbox.path
+
+        for mailbox in self.mailboxes():
+            if mailbox.path == path:
+                raise MailboxAlreadyExists(
+                    f"A mailbox already exists at '{mailbox.path}'"
+                )
+
+        self._imap.rename(old_path, path)
+
+        for mailbox in self.mailboxes():
+            if mailbox.path.startswith(old_path):
+                mailbox.path = mailbox.path.replace(old_path, path)
+                mailbox.label = mailbox.path.split("/")[-1]
+
+    def rename_mailbox(self, mailbox: Mailbox, label: str):
+        """
+        Rename a mailbox
+
+        :param mailbox: The mailbox to rename
+        :param path: The new label of the mailbox
+        """
+        parent_path = "/".join(mailbox.path.split("/")[0:-1])
+        path = f"{parent_path}/{label}" if parent_path else label
+        return self.move_mailbox(mailbox, path)
