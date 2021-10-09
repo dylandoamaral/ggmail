@@ -1,6 +1,16 @@
 from abc import ABC, abstractmethod
+from datetime import date, datetime
+from enum import Enum
 
 from pydantic import BaseModel
+
+
+class Flag(Enum):
+    ANSWERED = "Answered"
+    FLAGGED = "Flagged"
+    DELETED = "Deleted"
+    SEEN = "Seen"
+    DRAFT = "Draft"
 
 
 class Policy(ABC, BaseModel):
@@ -9,6 +19,9 @@ class Policy(ABC, BaseModel):
         """"""
 
     def __add__(self, other: "Policy"):
+        return And(left=self, right=other)
+
+    def __iadd__(self, other: "Policy"):
         return And(left=self, right=other)
 
     def __or__(self, other: "Policy"):
@@ -30,7 +43,7 @@ class And(Policy):
     right: Policy
 
     def to_imap_standard(self):
-        return f"AND {self.left.to_imap_standard()} {self.right.to_imap_standard()}"
+        return f"{self.left.to_imap_standard()} {self.right.to_imap_standard()}"
 
 
 class Or(Policy):
@@ -64,16 +77,67 @@ class OneInteger(Policy):
         return f"{self.intrinsic} {self.value}"
 
 
+class OneDate(Policy):
+    intrinsic: str
+    date: date
+
+    def to_imap_standard(self):
+        date_time = datetime(self.date.year, self.date.month, self.date.day)
+        date_format = "%d-%b-%Y"
+        return f"{self.intrinsic} {date_time.strftime(date_format)}"
+
+
+class OneFlag(Policy):
+    intrinsic: str
+    flag: Flag
+
+    def to_imap_standard(self):
+        return f"{self.intrinsic} \\{self.flag.value}"
+
+
+# TODO field_name should be an enum
+class Header(Policy):
+    field_name: str
+    value: str
+
+    def to_imap_standard(self):
+        return f"HEADER {self.field_name} {self.value}"
+
+
 all_ = Intrinsic(intrinsic="ALL")
 answered = Intrinsic(intrinsic="ANSWERED")
 deleted = Intrinsic(intrinsic="DELETED")
 draft = Intrinsic(intrinsic="DRAFT")
 flagged = Intrinsic(intrinsic="FLAGGED")
+new = Intrinsic(intrinsic="NEW")
+old = Intrinsic(intrinsic="OLD")
+recent = Intrinsic(intrinsic="RECENT")
+seen = Intrinsic(intrinsic="SEEN")
+unanswered = Intrinsic(intrinsic="UNANSWERED")
+undeleted = Intrinsic(intrinsic="UNDELETED")
+undraft = Intrinsic(intrinsic="UNDRAFT")
+unflagged = Intrinsic(intrinsic="UNFLAGGED")
+unseen = Intrinsic(intrinsic="UNSEEN")
 
+bcc_contains = lambda content: OneString(intrinsic="BCC", value=content)
 body_contains = lambda content: OneString(intrinsic="BODY", value=content)
-from_ = lambda sender: OneString(intrinsic="FROM", value=sender)
+cc_contains = lambda content: OneString(intrinsic="CC", value=content)
+from_contains = lambda content: OneString(intrinsic="FROM", value=content)
 subject_contains = lambda content: OneString(intrinsic="SUBJECT", value=content)
-to = lambda sender: OneString(intrinsic="TO", value=sender)
+text_contains = lambda content: OneString(intrinsic="TEXT", value=content)
+to_contains = lambda content: OneString(intrinsic="TO", value=content)
+uid = lambda content: OneString(intrinsic="UID", value=content)
 
 larger_than = lambda size: OneInteger(intrinsic="LARGER", value=size)
 smaller_than = lambda size: OneInteger(intrinsic="SMALLER", value=size)
+
+before = lambda date: OneDate(intrinsic="BEFORE", date=date)
+on = lambda date: OneDate(intrinsic="ON", date=date)
+sent_before = lambda date: OneDate(intrinsic="SENTBEFORE", date=date)
+sent_on = lambda date: OneDate(intrinsic="SENTON", date=date)
+sent_since = lambda date: OneDate(intrinsic="SENTSINCE", date=date)
+since = lambda date: OneDate(intrinsic="SINCE", date=date)
+
+header = lambda field_name, value: Header(field_name=field_name, value=value)
+keyword = lambda flag: OneFlag(intrinsic="KEYWORD", flag=flag)
+unkeyword = lambda flag: Keyword(intrinsic="UNKEYWORD", flag=flag)
