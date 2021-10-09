@@ -1,6 +1,6 @@
 # GGmail
 
-Manage gmail account using python, forget about imap and stuff and just manage your gmail account as you please.
+Manage gmail account using python, forget about imap and just code what you supposed to do with gmail.
 
 ## Install
 
