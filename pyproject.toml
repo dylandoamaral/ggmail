@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "ggmail"
 version = "0.1.0"
-description = "Manage gmail account using python, forget about imap and just code what you supposed to do with gmail."
+description = "Manage gmail account using python, forget about imap and just code what you supposed to do."
 authors = ["dylandoamaral <do.amaral.dylan@gmail.com>"]
 
 [tool.poetry.dependencies]
