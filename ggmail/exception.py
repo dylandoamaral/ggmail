@@ -41,6 +41,14 @@ class MessageFetchingFailed(Exception):
     pass
 
 
+class FlagNotAttached(Exception):
+    pass
+
+
+class FlagAlreadyAttached(Exception):
+    pass
+
+
 # Utf exception
 class WrongUTF7String(Exception):
     pass

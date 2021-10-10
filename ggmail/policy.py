@@ -85,7 +85,7 @@ class OneFlag(Policy):
     flag: Flag
 
     def to_imap_standard(self):
-        return f"{self.intrinsic} \\{self.flag.value}"
+        return f"{self.intrinsic} {self.flag.value}"
 
 
 # TODO field_name should be an enum

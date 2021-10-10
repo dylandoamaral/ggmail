@@ -1,8 +1,11 @@
 from datetime import datetime
-from unittest.mock import Mock, patch
+from imaplib import IMAP4_SSL
+from unittest.mock import ANY, Mock, patch
 
 import pytest
+from pytest import raises
 
+from ggmail.exception import FlagAlreadyAttached, FlagNotAttached
 from ggmail.flag import Flag
 from ggmail.message import (
     ContentType,
@@ -10,12 +13,13 @@ from ggmail.message import (
     decode_content,
     decode_flags,
     decode_subject,
+    decode_uid,
     get_content_type,
     message_factory,
 )
 
 
-class TestMessageStatus:
+class TestMessageFlag:
     @pytest.mark.parametrize(
         "flag,function",
         [
@@ -26,8 +30,9 @@ class TestMessageStatus:
             pytest.param(Flag.SEEN, "is_seen", id="seen"),
         ],
     )
-    def test_status(self, flag, function):
+    def test_check_flag(self, flag, function):
         message = Message(
+            uid="",
             from_="",
             to="",
             subject="",
@@ -36,9 +41,102 @@ class TestMessageStatus:
             date=datetime.now(),
             content_type=ContentType.MULTIPART,
             flags=[flag],
+            _account=Mock(),
         )
 
         assert getattr(message, function)() is True
+
+    @patch.object(IMAP4_SSL, "uid")
+    @pytest.mark.parametrize(
+        "flag,function",
+        [
+            pytest.param(Flag.ANSWERED, "answer", id="answered"),
+            pytest.param(Flag.DELETED, "delete", id="deleted"),
+            pytest.param(Flag.DRAFT, "draft", id="draft"),
+            pytest.param(Flag.FLAGGED, "star", id="starred"),
+            pytest.param(Flag.SEEN, "seen", id="seen"),
+        ],
+    )
+    def test_add_flag(self, imap_uid_mock, flag, function, logged_account):
+        message = Message(
+            uid="",
+            from_="",
+            to="",
+            subject="",
+            html="",
+            body="",
+            date=datetime.now(),
+            content_type=ContentType.MULTIPART,
+            flags=[],
+            _account=logged_account,
+        )
+
+        getattr(message, function)()
+        assert message.flags == [flag]
+
+    @patch.object(IMAP4_SSL, "uid")
+    def test_add_flag_already_attached(self, imap_uid_mock, logged_account):
+        message = Message(
+            uid="",
+            from_="",
+            to="",
+            subject="",
+            html="",
+            body="",
+            date=datetime.now(),
+            content_type=ContentType.MULTIPART,
+            flags=[Flag.FLAGGED],
+            _account=logged_account,
+        )
+
+        with raises(FlagAlreadyAttached):
+            message.star()
+
+    @patch.object(IMAP4_SSL, "uid")
+    @pytest.mark.parametrize(
+        "flag,function",
+        [
+            pytest.param(Flag.ANSWERED, "unanswer", id="answered"),
+            pytest.param(Flag.DELETED, "undelete", id="deleted"),
+            pytest.param(Flag.DRAFT, "undraft", id="draft"),
+            pytest.param(Flag.FLAGGED, "unstar", id="starred"),
+            pytest.param(Flag.SEEN, "unseen", id="seen"),
+        ],
+    )
+    def test_remove_flag(self, imap_uid_mock, flag, function, logged_account):
+        message = Message(
+            uid="",
+            from_="",
+            to="",
+            subject="",
+            html="",
+            body="",
+            date=datetime.now(),
+            content_type=ContentType.MULTIPART,
+            flags=[flag],
+            _account=logged_account,
+        )
+
+        getattr(message, function)()
+        assert message.flags == []
+
+    @patch.object(IMAP4_SSL, "uid")
+    def test_remove_flag_not_attached(self, imap_uid_mock, logged_account):
+        message = Message(
+            uid="",
+            from_="",
+            to="",
+            subject="",
+            html="",
+            body="",
+            date=datetime.now(),
+            content_type=ContentType.MULTIPART,
+            flags=[],
+            _account=logged_account,
+        )
+
+        with raises(FlagNotAttached):
+            message.unstar()
 
 
 class TestMessageDecoders:
@@ -51,7 +149,6 @@ class TestMessageDecoders:
         message = Mock()
         message.get_content_maintype.return_value = "text"
         message.get_payload.return_value = "body"
-        # message.walk.return_value = [sub_message]
 
         assert decode_content(message) == ("body", None)
 
@@ -76,14 +173,26 @@ class TestMessageDecoders:
         assert Flag.SEEN in flags
         assert len(flags) == 2
 
+    def test_decode_uid(self):
+        header = b"6 (UID 24"
+        uid = decode_uid(header)
+
+        assert uid == "24"
+
 
 class TestMessageFactory:
     @patch("ggmail.message.message_from_bytes")
     @patch("ggmail.message.decode_subject")
     @patch("ggmail.message.decode_content")
     @patch("ggmail.message.decode_flags")
+    @patch("ggmail.message.decode_uid")
     def test_message_factory(
-        self, decode_flags_mock, decode_content_mock, decode_subject_mock, email_mock
+        self,
+        decode_uid_mock,
+        decode_flags_mock,
+        decode_content_mock,
+        decode_subject_mock,
+        email_mock,
     ):
         message_dict = {
             "From": "from@gmail.com",
@@ -100,11 +209,13 @@ class TestMessageFactory:
         decode_content_mock.return_value = "body", "<html>body<\html>"
         decode_subject_mock.return_value = "Subject"
         decode_flags_mock.return_value = []
+        decode_uid_mock.return_value = "1"
 
         email_mock.return_value = message
 
-        message = message_factory([b"", b""])
+        message = message_factory([b"", b""], ANY)
 
+        assert message.uid == "1"
         assert message.subject == "Subject"
         assert message.from_ == "from@gmail.com"
         assert message.to == "to@gmail.com"
