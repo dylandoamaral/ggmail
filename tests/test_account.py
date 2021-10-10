@@ -565,6 +565,21 @@ class TestAccountSearchMessage:
         assert len(messages) == 2
         message_factory_mock.assert_has_calls([call(b"msg1", ANY), call(b"msg2", ANY)])
 
+    @patch.object(Account, "search_message_uids")
+    @patch("ggmail.account.message_factory")
+    def test_search_messages_empty(
+        self,
+        message_factory_mock,
+        account_search_message_uids_mock,
+        logged_account,
+    ):
+        account_search_message_uids_mock.return_value = []
+        message_factory_mock.return_value = Mock()
+
+        messages = logged_account.search_messages()
+
+        assert len(messages) == 0
+
     @patch.object(IMAP4_SSL, "select")
     @patch.object(IMAP4_SSL, "fetch")
     @patch.object(Account, "search_message_uids")
