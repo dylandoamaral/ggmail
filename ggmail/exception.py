@@ -28,6 +28,10 @@ class MailboxAlreadyExists(Exception):
     pass
 
 
+class MailboxNotDeletable(Exception):
+    pass
+
+
 # Message exception
 class MessageSearchingFailed(Exception):
     pass

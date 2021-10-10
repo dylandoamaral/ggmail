@@ -444,6 +444,70 @@ class TestAccountCreateMailbox:
             account.create_mailbox("")
 
 
+class TestAccountDeleteMailbox:
+    @patch.object(IMAP4_SSL, "delete")
+    @patch.object(Account, "mailboxes")
+    def test_delete_mailbox(
+        self, account_mailboxes_mock, imap_delete_mock, logged_account
+    ):
+        mailbox = Mailbox(
+            label="Master",
+            path="Master",
+            kind=MailboxKind.CUSTOM,
+            has_children=True,
+            raw=b"",
+            _account=logged_account,
+        )
+        account_mailboxes_mock.return_value = [mailbox]
+        mailbox = logged_account.delete_mailbox(mailbox)
+
+        assert len(logged_account.mailboxes()) == 0
+        imap_delete_mock.assert_called_once_with("Master")
+
+    @patch.object(IMAP4_SSL, "delete")
+    @patch.object(Account, "mailboxes")
+    def test_delete_mailbox_from_path(
+        self, account_mailboxes_mock, imap_delete_mock, logged_account
+    ):
+        account_mailboxes_mock.return_value = [
+            Mailbox(
+                label="Master",
+                path="Master",
+                kind=MailboxKind.CUSTOM,
+                has_children=True,
+                raw=b"",
+                _account=logged_account,
+            )
+        ]
+        mailbox = logged_account.delete_mailbox_from_path("Master")
+
+        assert len(logged_account.mailboxes()) == 0
+        imap_delete_mock.assert_called_once_with("Master")
+
+    @patch.object(IMAP4_SSL, "delete")
+    @patch.object(Account, "mailboxes")
+    def test_delete_mailbox_not_found(
+        self, account_mailboxes_mock, imap_delete_mock, logged_account
+    ):
+        account_mailboxes_mock.return_value = []
+
+        mailbox = Mailbox(
+            label="Master",
+            path="Master",
+            kind=MailboxKind.CUSTOM,
+            has_children=True,
+            raw=b"",
+            _account=logged_account,
+        )
+
+        with raises(MailboxNotFound):
+            logged_account.delete_mailbox(mailbox)
+
+    def test_delete_mailbox_not_connected(self, account):
+        with raises(NotConnected):
+            account.delete_mailbox_from_path("")
+
+
 class TestAccountSearchMessage:
     @patch.object(IMAP4_SSL, "search")
     def test_search_message_ids(self, imap_search_mock, logged_account):
