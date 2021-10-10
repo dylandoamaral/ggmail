@@ -1,5 +1,5 @@
 from imaplib import IMAP4_SSL
-from unittest.mock import ANY, Mock, call, patch
+from unittest.mock import patch
 
 from pytest import fixture
 
