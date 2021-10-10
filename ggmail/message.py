@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from email import message_from_bytes
 from email.header import decode_header
@@ -7,7 +8,7 @@ from enum import Enum, auto
 from imaplib import ParseFlags
 from typing import List, Optional, Tuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
 from .flag import Flag
 
@@ -18,6 +19,7 @@ class ContentType(Enum):
 
 
 class Message(BaseModel):
+    uid: str
     from_: str
     to: str
     subject: str
@@ -27,6 +29,28 @@ class Message(BaseModel):
     content_type: ContentType
     flags: List[Flag]
 
+    _account = PrivateAttr()
+
+    def __init__(self, _account, **data):
+        super().__init__(**data)
+        self._account = _account
+
+    def add_flag(self, flag: Flag):
+        """
+        Add the flag to the message
+
+        :param flag: The flag to add
+        """
+        return self._account.add_flag_message(self, flag)
+
+    def remove_flag(self, flag: Flag):
+        """
+        Remove the flag to the message
+
+        :param flag: The flag to remove
+        """
+        return self._account.remove_flag_message(self, flag)
+
     def is_answered(self) -> bool:
         """
         Return if the message is answered
@@ -34,6 +58,18 @@ class Message(BaseModel):
         :return: True if the message is answered, False else
         """
         return Flag.ANSWERED in self.flags
+
+    def answer(self):
+        """
+        Add answered flag to the message
+        """
+        return self.add_flag(Flag.ANSWERED)
+
+    def unanswer(self):
+        """
+        Remove answered flag to the message
+        """
+        return self.remove_flag(Flag.ANSWERED)
 
     def is_deleted(self) -> bool:
         """
@@ -43,6 +79,18 @@ class Message(BaseModel):
         """
         return Flag.DELETED in self.flags
 
+    def delete(self):
+        """
+        Add delete flag to the message
+        """
+        return self.add_flag(Flag.DELETED)
+
+    def undelete(self):
+        """
+        Remove delete flag to the message
+        """
+        return self.remove_flag(Flag.DELETED)
+
     def is_draft(self) -> bool:
         """
         Return if the message is draft
@@ -50,6 +98,18 @@ class Message(BaseModel):
         :return: True if the message is draft, False else
         """
         return Flag.DRAFT in self.flags
+
+    def draft(self):
+        """
+        Add draft flag to the message
+        """
+        return self.add_flag(Flag.DRAFT)
+
+    def undraft(self):
+        """
+        Remove draft flag to the message
+        """
+        return self.remove_flag(Flag.DRAFT)
 
     def is_starred(self) -> bool:
         """
@@ -59,6 +119,18 @@ class Message(BaseModel):
         """
         return Flag.FLAGGED in self.flags
 
+    def star(self):
+        """
+        Add flagged flag to the message
+        """
+        return self.add_flag(Flag.FLAGGED)
+
+    def unstar(self):
+        """
+        Remove flagged flag to the message
+        """
+        return self.remove_flag(Flag.FLAGGED)
+
     def is_seen(self) -> bool:
         """
         Return if the message is seen
@@ -66,6 +138,18 @@ class Message(BaseModel):
         :return: True if the message is seen, False else
         """
         return Flag.SEEN in self.flags
+
+    def seen(self):
+        """
+        Add seen flag to the message
+        """
+        return self.add_flag(Flag.SEEN)
+
+    def unseen(self):
+        """
+        Remove seen flag to the message
+        """
+        return self.remove_flag(Flag.SEEN)
 
 
 def decode_subject(subject: str) -> str:
@@ -108,25 +192,45 @@ def decode_flags(header: bytes) -> List[Flag]:
     :return: The message flags
     """
     raw_flags = ParseFlags(header)
-    return [Flag(flag.decode("utf8")[1:]) for flag in raw_flags]
+    return [Flag(flag.decode("utf8")) for flag in raw_flags]
+
+
+def decode_uid(header: bytes) -> str:
+    """
+    Decode uid from the header
+
+    :param header: The header
+    :return: The uid
+    """
+    return re.search(r"UID (\d+)", header.decode("utf8")).groups(1)[0]
 
 
 def get_content_type(content_type: str) -> ContentType:
     return ContentType.MULTIPART if content_type == "multipart" else ContentType.TEXT
 
 
-def message_factory(raw_message_description: List[bytes]) -> Message:
-    message = message_from_bytes(raw_message_description[1])
+def message_factory(raw_message_description: List[bytes], account) -> Message:
+    """
+    Create a message from a raw byte description of the message
 
+    :param raw_message_description: The description of the message
+    :paam account: The account
+    :return: The message
+    """
+    raw_header, raw_message = raw_message_description
+    message = message_from_bytes(raw_message)
+
+    uid = decode_uid(raw_header)
     from_ = message["From"]
     to = message["To"]
     subject = decode_subject(message["Subject"])
     body, html = decode_content(message)
     date = parsedate_to_datetime(message["Date"])
     content_type = get_content_type(message.get_content_maintype())
-    flags = decode_flags(raw_message_description[0])
+    flags = decode_flags(raw_header)
 
     return Message(
+        uid=uid,
         from_=from_,
         to=to,
         subject=subject,
@@ -135,4 +239,5 @@ def message_factory(raw_message_description: List[bytes]) -> Message:
         date=date,
         content_type=content_type,
         flags=flags,
+        _account=account,
     )

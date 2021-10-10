@@ -73,6 +73,7 @@ def mailbox_factory(raw_mailbox_description: bytes, account) -> Mailbox:
     Create a mailbox from a raw byte description of the mailbox
 
     :param raw_mailbox_description: The description of the mailbox
+    :paam account: The account
     :return: The mailbox
     """
     mailbox_description = raw_mailbox_description.decode("utf8")

@@ -5,6 +5,8 @@ from pydantic import BaseModel, PrivateAttr, SecretStr
 
 from .exception import (
     AlreadyConnected,
+    FlagAlreadyAttached,
+    FlagNotAttached,
     LoginFailed,
     MailboxAlreadyExists,
     MailboxFetchingFailed,
@@ -14,6 +16,7 @@ from .exception import (
     MessageSearchingFailed,
     NotConnected,
 )
+from .flag import Flag
 from .mailbox import Mailbox, MailboxKind, mailbox_factory
 from .message import Message, message_factory
 from .policy import Policy
@@ -307,28 +310,6 @@ class Account(BaseModel):
         path = f"{parent_path}/{label}" if parent_path else label
         return self.move_mailbox(mailbox, path)
 
-    def search_message_ids(self, policy: Policy = all_policy) -> List[str]:
-        """
-        Search all message ids from the selected mailbox according to the policy
-
-        :param policy: The policy to fetch message, defaults to all_
-        :raises NotConnected: If the user is not connected
-        :return: The list of ids
-        """
-        self._check_is_connected()
-
-        status, raw_response = self._imap.search(None, policy.to_imap_standard())
-
-        if status != "OK":
-            raise MessageSearchingFailed("Unable to search message ids")
-
-        raw_list = raw_response[0].decode("utf8").split(" ")
-
-        if raw_list == [""]:
-            return []
-
-        return [n for n in raw_list]
-
     def create_mailbox(self, path: str) -> Mailbox:
         """
         Create a mailbox from a path
@@ -378,6 +359,28 @@ class Account(BaseModel):
         mailbox = self.mailbox_from_path(path)
         return self.delete_mailbox(mailbox)
 
+    def search_message_uids(self, policy: Policy = all_policy) -> List[str]:
+        """
+        Search all message ids from the selected mailbox according to the policy
+
+        :param policy: The policy to fetch message, defaults to all_
+        :raises NotConnected: If the user is not connected
+        :return: The list of ids
+        """
+        self._check_is_connected()
+
+        status, raw_response = self._imap.search(None, policy.to_imap_standard())
+
+        if status != "OK":
+            raise MessageSearchingFailed("Unable to search message uids")
+
+        raw_list = raw_response[0].decode("utf8").split(" ")
+
+        if raw_list == [""]:
+            return []
+
+        return [n for n in raw_list]
+
     def search_messages(self, policy: Policy = all_policy) -> List[Message]:
         """
         Search all messages from the selected mailbox according to the policy
@@ -388,16 +391,52 @@ class Account(BaseModel):
         """
         self._check_is_connected()
 
-        message_ids = self.search_message_ids(policy)
+        message_uids = self.search_message_uids(policy)
         status, raw_response = self._imap.fetch(
-            ",".join(message_ids), "(BODY.PEEK[] FLAGS)"
+            ",".join(message_uids), "(BODY.PEEK[] FLAGS UID)"
         )
 
         if status != "OK":
             raise MessageFetchingFailed("Unable to fetch message")
 
         return [
-            message_factory(raw_message_description)
+            message_factory(raw_message_description, self)
             for (index, raw_message_description) in enumerate(raw_response)
             if index % 2 == 0
         ]
+
+    def add_flag_message(self, message: Message, flag: Flag):
+        """
+        Add a flag to the message
+
+        :param message: The message to update
+        :param flag: The flag to add
+        :raises NotConnected: If the user is not connected
+        :raises FlagAlreadyAttached: If the flag is already attached
+        """
+        self._check_is_connected()
+
+        if flag in message.flags:
+            raise FlagAlreadyAttached(
+                f"The flag {flag} is already attached to the message"
+            )
+
+        self._imap.uid("STORE", message.uid, "+FLAGS", flag.value)
+        message.flags.append(flag)
+
+    def remove_flag_message(self, message: Message, flag: Flag):
+        """
+        Remove a flag from the message
+
+        :param message: The message to update
+        :param flag: The flag to remove
+        :raises NotConnected: If the user is not connected
+        :raises FlagAlreadyAttached: If the flag is not attached
+        """
+        self._check_is_connected()
+
+        if flag not in message.flags:
+            raise FlagNotAttached(f"The flag {flag} is not attached to the message")
+
+        self._imap.uid("STORE", message.uid, "-FLAGS", flag.value)
+        message.flags.remove(flag)
