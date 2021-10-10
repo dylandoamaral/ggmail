@@ -35,6 +35,23 @@ class Message(BaseModel):
         super().__init__(**data)
         self._account = _account
 
+    def copy(self, mailbox):
+        """
+        Copy the message to another mailbox
+
+        :param mailbox: The other mailbox
+        """
+        return self._account.copy_message(self, mailbox)
+
+    def move(self, mailbox, with_expunge: bool = False):
+        """
+        Move the message to another mailbox
+
+        :param mailbox: The new mailbox
+        :param with_expunge: If you permanently delete the message from the source
+        """
+        return self._account.move_message(self, mailbox, with_expunge)
+
     def add_flag(self, flag: Flag):
         """
         Add the flag to the message
@@ -83,7 +100,7 @@ class Message(BaseModel):
         """
         Add delete flag to the message
         """
-        return self.add_flag(Flag.DELETED)
+        self.add_flag(Flag.DELETED)
 
     def undelete(self):
         """
