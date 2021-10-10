@@ -44,7 +44,7 @@ class TestAccountLogin:
     @patch.object(IMAP4_SSL, "login")
     def test_login_success(self, imap_login_mock, account):
         account.login()
-        assert account.is_connected == True
+        assert account.is_connected is True
 
     @patch.object(IMAP4_SSL, "login")
     def test_login_already_connected(self, imap_login_mock, account):
@@ -65,7 +65,7 @@ class TestAccountLogin:
 class TestAccountLogout:
     def test_logout_success(self, logged_account):
         logged_account.logout()
-        assert logged_account.is_connected == False
+        assert logged_account.is_connected is False
 
     def test_logout_not_connected(self, account):
         with raises(NotConnected):
@@ -76,7 +76,7 @@ class TestAccountContextManager:
     @patch.object(IMAP4_SSL, "logout")
     @patch.object(IMAP4_SSL, "login")
     def test_context_manager(self, imap_login_mock, imap_logout_mock, account):
-        with Account(username="test@gmail.com", password="secret") as account:
+        with Account(username="test@gmail.com", password="secret"):
             pass
 
         imap_login_mock.assert_called_once()
@@ -480,7 +480,8 @@ class TestAccountDeleteMailbox:
                 _account=logged_account,
             )
         ]
-        mailbox = logged_account.delete_mailbox_from_path("Master")
+
+        logged_account.delete_mailbox_from_path("Master")
 
         assert len(logged_account.mailboxes()) == 0
         imap_delete_mock.assert_called_once_with("Master")
@@ -506,7 +507,7 @@ class TestAccountDeleteMailbox:
 
     @patch.object(IMAP4_SSL, "delete")
     @patch.object(Account, "mailboxes")
-    def test_delete_mailbox_not_found(
+    def test_delete_mailbox_not_deletable(
         self, account_mailboxes_mock, imap_delete_mock, logged_account
     ):
         account_mailboxes_mock.return_value = []
@@ -521,25 +522,6 @@ class TestAccountDeleteMailbox:
         )
 
         with raises(MailboxNotDeletable):
-            logged_account.delete_mailbox(mailbox)
-
-    @patch.object(IMAP4_SSL, "delete")
-    @patch.object(Account, "mailboxes")
-    def test_delete_mailbox_not_deletable(
-        self, account_mailboxes_mock, imap_delete_mock, logged_account
-    ):
-        account_mailboxes_mock.return_value = []
-
-        mailbox = Mailbox(
-            label="Master",
-            path="Master",
-            kind=MailboxKind.CUSTOM,
-            has_children=True,
-            raw=b"",
-            _account=logged_account,
-        )
-
-        with raises(MailboxNotFound):
             logged_account.delete_mailbox(mailbox)
 
     def test_delete_mailbox_not_connected(self, account):
