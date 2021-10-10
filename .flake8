@@ -1,0 +1,3 @@
+[flake8]
+ignore = E731 # Lambda assignement FTW
+max-line-length = 88

@@ -157,13 +157,13 @@ class TestMessageDecoders:
         message_body.get_payload.return_value = "body"
         message_body.get_content_type.return_value = "text/plain"
         message_html = Mock()
-        message_html.get_payload.return_value = "<html>body<\html>"
+        message_html.get_payload.return_value = r"<html>body<\html>"
         message_html.get_content_type.return_value = "text/html"
         message = Mock()
         message.get_content_maintype.return_value = "multipart"
         message.walk.return_value = [message_body, message_html]
 
-        assert decode_content(message) == ("body", "<html>body<\html>")
+        assert decode_content(message) == ("body", r"<html>body<\html>")
 
     def test_decode_flags(self):
         header = b"6 (FLAGS (\\Flagged \\Seen) BODY[] {5043}"
@@ -206,7 +206,7 @@ class TestMessageFactory:
         message.__getitem__.side_effect = message_dict.__getitem__
         message.get_content_maintype.return_value = "multipart"
 
-        decode_content_mock.return_value = "body", "<html>body<\html>"
+        decode_content_mock.return_value = "body", r"<html>body<\html>"
         decode_subject_mock.return_value = "Subject"
         decode_flags_mock.return_value = []
         decode_uid_mock.return_value = "1"
@@ -220,7 +220,7 @@ class TestMessageFactory:
         assert message.from_ == "from@gmail.com"
         assert message.to == "to@gmail.com"
         assert message.body == "body"
-        assert message.html == "<html>body<\html>"
+        assert message.html == r"<html>body<\html>"
         assert message.content_type is ContentType.MULTIPART
 
         assert message.date.year == 2021

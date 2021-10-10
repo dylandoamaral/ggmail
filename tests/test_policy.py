@@ -9,7 +9,6 @@ from ggmail.policy import (
     from_contains,
     header,
     keyword,
-    larger_than,
     smaller_than,
     to_contains,
     unseen,

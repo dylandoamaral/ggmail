@@ -4,7 +4,9 @@ test:
 format:
 	@poetry run black ggmail tests
 	@poetry run isort ggmail tests
+	@poetry run flake8 ggmail tests
 
 check:
 	@poetry run black ggmail tests --check
 	@poetry run isort ggmail tests --check
+	@poetry run flake8 ggmail tests

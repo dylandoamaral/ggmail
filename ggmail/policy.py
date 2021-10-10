@@ -133,4 +133,4 @@ since = lambda date: OneDate(intrinsic="SINCE", date=date)
 
 header = lambda field_name, value: Header(field_name=field_name, value=value)
 keyword = lambda flag: OneFlag(intrinsic="KEYWORD", flag=flag)
-unkeyword = lambda flag: Keyword(intrinsic="UNKEYWORD", flag=flag)
+unkeyword = lambda flag: OneFlag(intrinsic="UNKEYWORD", flag=flag)

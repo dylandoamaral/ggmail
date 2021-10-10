@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from email import message_from_bytes
 from email.header import decode_header
-from email.message import Message
+from email.message import Message as EmailMessage
 from email.utils import parsedate_to_datetime
 from enum import Enum, auto
 from imaplib import ParseFlags
@@ -164,11 +164,11 @@ def decode_subject(subject: str) -> str:
     return "".join(strs)
 
 
-def decode_content(message: Message) -> Tuple[str, Optional[str]]:
+def decode_content(message: EmailMessage) -> Tuple[str, Optional[str]]:
     """
     Decode the content giving the html and the body
 
-    :param body: The message
+    :param message: The message
     :return: The decoded body and html
     """
     body, html = None, None

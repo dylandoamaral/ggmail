@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from imaplib import IMAP4_SSL
 from typing import List
 
 from pydantic import BaseModel, PrivateAttr
