@@ -409,6 +409,41 @@ class TestAccountSelectMailbox:
             account.select_mailbox(Mock())
 
 
+class TestAccountCreateMailbox:
+    @patch.object(IMAP4_SSL, "create")
+    @patch.object(Account, "mailboxes")
+    def test_create_mailbox(
+        self, account_mailboxes_mock, imap_create_mock, logged_account
+    ):
+        account_mailboxes_mock.return_value = []
+        mailbox = logged_account.create_mailbox("Parent/New")
+        assert mailbox.label == "New"
+        assert mailbox.path == "Parent/New"
+        imap_create_mock.assert_called_once_with("Parent/New")
+
+    @patch.object(Account, "mailboxes")
+    def test_create_mailbox_already_exists(
+        self, account_mailboxes_mock, logged_account
+    ):
+        account_mailboxes_mock.return_value = [
+            Mailbox(
+                label="Master",
+                path="Master",
+                kind=MailboxKind.INBOX,
+                has_children=True,
+                raw=b"",
+                _account=logged_account,
+            )
+        ]
+
+        with raises(MailboxAlreadyExists):
+            logged_account.create_mailbox("Master")
+
+    def test_create_mailbox_not_connected(self, account):
+        with raises(NotConnected):
+            account.create_mailbox("")
+
+
 class TestAccountSearchMessage:
     @patch.object(IMAP4_SSL, "search")
     def test_search_message_ids(self, imap_search_mock, logged_account):
