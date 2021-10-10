@@ -1,6 +1,6 @@
 from datetime import datetime
 from imaplib import IMAP4_SSL
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import ANY, Mock, call, patch
 
 import pytest
 from pytest import raises
@@ -137,6 +137,77 @@ class TestMessageFlag:
 
         with raises(FlagNotAttached):
             message.unstar()
+
+
+class TestMoveMessage:
+    @patch.object(IMAP4_SSL, "uid")
+    def test_copy_message(self, imap_uid_mock, logged_account):
+        message = Message(
+            uid="1",
+            from_="",
+            to="",
+            subject="",
+            html="",
+            body="",
+            date=datetime.now(),
+            content_type=ContentType.MULTIPART,
+            flags=[],
+            _account=logged_account,
+        )
+        mailbox = Mock()
+        mailbox.path = "Mailbox"
+
+        message.copy(mailbox)
+
+        imap_uid_mock.assert_called_once_with("Copy", "1", "Mailbox")
+
+    @patch.object(IMAP4_SSL, "uid")
+    def test_move_message(self, imap_uid_mock, logged_account):
+        message = Message(
+            uid="1",
+            from_="",
+            to="",
+            subject="",
+            html="",
+            body="",
+            date=datetime.now(),
+            content_type=ContentType.MULTIPART,
+            flags=[],
+            _account=logged_account,
+        )
+        mailbox = Mock()
+        mailbox.path = "Mailbox"
+
+        message.move(mailbox)
+
+        imap_uid_mock.has_calls([call("Copy", "1", "Mailbox")])
+        assert Flag.DELETED in message.flags
+
+    @patch.object(IMAP4_SSL, "uid")
+    @patch.object(IMAP4_SSL, "expunge")
+    def test_move_message_with_expunge(
+        self, imap_expunge_mock, imap_uid_mock, logged_account
+    ):
+        message = Message(
+            uid="1",
+            from_="",
+            to="",
+            subject="",
+            html="",
+            body="",
+            date=datetime.now(),
+            content_type=ContentType.MULTIPART,
+            flags=[],
+            _account=logged_account,
+        )
+        mailbox = Mock()
+        mailbox.path = "Mailbox"
+
+        message.move(mailbox, with_expunge=True)
+
+        imap_uid_mock.has_calls([call("Copy", "1", "Mailbox")])
+        imap_expunge_mock.assert_called_once()
+        assert Flag.DELETED in message.flags
 
 
 class TestMessageDecoders:

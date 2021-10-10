@@ -604,3 +604,10 @@ class TestAccountSearchMessage:
     def test_search_message_not_connected(self, account):
         with raises(NotConnected):
             account.search_messages()
+
+
+class TestAccountExpunge:
+    @patch.object(IMAP4_SSL, "expunge")
+    def test_expunge(self, imap_expunge_mock, logged_account):
+        logged_account.expunge()
+        imap_expunge_mock.assert_called_once()

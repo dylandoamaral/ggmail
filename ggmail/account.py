@@ -254,6 +254,12 @@ class Account(BaseModel):
         """
         return self.mailboxes_from_kind(MailboxKind.CUSTOM)
 
+    def expunge(self):
+        """
+        Permanently delete messages that have the Deleted flag.
+        """
+        self._imap.expunge()
+
     def select_mailbox(self, mailbox: Mailbox):
         """
         Select a mailbox
@@ -392,6 +398,10 @@ class Account(BaseModel):
         self._check_is_connected()
 
         message_uids = self.search_message_uids(policy)
+
+        if not message_uids:
+            return []
+
         status, raw_response = self._imap.fetch(
             ",".join(message_uids), "(BODY.PEEK[] FLAGS UID)"
         )
@@ -404,6 +414,32 @@ class Account(BaseModel):
             for (index, raw_message_description) in enumerate(raw_response)
             if index % 2 == 0
         ]
+
+    def copy_message(self, message: Message, mailbox: Mailbox):
+        """
+        Copy a message to another mailbox
+
+        :param message: The message to copy
+        :param mailbox: The other mailbox
+        """
+        self._check_is_connected()
+        self._imap.uid("Copy", message.uid, mailbox.path)
+
+    def move_message(
+        self, message: Message, mailbox: Mailbox, with_expunge: bool = False
+    ):
+        """
+        Move a message to another mailbox, if you don't set with_expunge to True, you
+        will still see the mail in the source mailbox.
+
+        :param message: The message to move
+        :param mailbox: The other mailbox
+        :param with_expunge: If you permanently delete the message from the source
+        """
+        self.copy_message(message, mailbox)
+        message.delete()
+        if with_expunge:
+            self.expunge()
 
     def add_flag_message(self, message: Message, flag: Flag):
         """
