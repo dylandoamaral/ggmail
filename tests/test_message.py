@@ -1,12 +1,44 @@
+from datetime import datetime
 from unittest.mock import Mock, patch
 
+import pytest
+
+from ggmail.flag import Flag
 from ggmail.message import (
     ContentType,
+    Message,
     decode_content,
+    decode_flags,
     decode_subject,
     get_content_type,
     message_factory,
 )
+
+
+class TestMessageStatus:
+    @pytest.mark.parametrize(
+        "flag,function",
+        [
+            pytest.param(Flag.ANSWERED, "is_answered", id="answered"),
+            pytest.param(Flag.DELETED, "is_deleted", id="deleted"),
+            pytest.param(Flag.DRAFT, "is_draft", id="draft"),
+            pytest.param(Flag.FLAGGED, "is_starred", id="starred"),
+            pytest.param(Flag.SEEN, "is_seen", id="seen"),
+        ],
+    )
+    def test_status(self, flag, function):
+        message = Message(
+            from_="",
+            to="",
+            subject="",
+            html="",
+            body="",
+            date=datetime.now(),
+            content_type=ContentType.MULTIPART,
+            flags=[flag],
+        )
+
+        assert getattr(message, function)() is True
 
 
 class TestMessageDecoders:
@@ -36,13 +68,22 @@ class TestMessageDecoders:
 
         assert decode_content(message) == ("body", "<html>body<\html>")
 
+    def test_decode_flags(self):
+        header = b"6 (FLAGS (\\Flagged \\Seen) BODY[] {5043}"
+        flags = decode_flags(header)
+
+        assert Flag.FLAGGED in flags
+        assert Flag.SEEN in flags
+        assert len(flags) == 2
+
 
 class TestMessageFactory:
     @patch("ggmail.message.message_from_bytes")
     @patch("ggmail.message.decode_subject")
     @patch("ggmail.message.decode_content")
+    @patch("ggmail.message.decode_flags")
     def test_message_factory(
-        self, decode_content_mock, decode_subject_mock, email_mock
+        self, decode_flags_mock, decode_content_mock, decode_subject_mock, email_mock
     ):
         message_dict = {
             "From": "from@gmail.com",
@@ -58,6 +99,7 @@ class TestMessageFactory:
 
         decode_content_mock.return_value = "body", "<html>body<\html>"
         decode_subject_mock.return_value = "Subject"
+        decode_flags_mock.return_value = []
 
         email_mock.return_value = message
 

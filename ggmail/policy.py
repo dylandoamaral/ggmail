@@ -1,16 +1,9 @@
 from abc import ABC, abstractmethod
 from datetime import date, datetime
-from enum import Enum
 
 from pydantic import BaseModel
 
-
-class Flag(Enum):
-    ANSWERED = "Answered"
-    FLAGGED = "Flagged"
-    DELETED = "Deleted"
-    SEEN = "Seen"
-    DRAFT = "Draft"
+from .flag import Flag
 
 
 class Policy(ABC, BaseModel):
