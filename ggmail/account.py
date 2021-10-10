@@ -69,11 +69,29 @@ class Account(BaseModel):
 
         :raises NotConnected: If the user is not connected
         """
-        if not self.is_connected:
-            raise NotConnected("You should be connected to perform this operation")
+        self._check_is_connected()
 
         self._imap.logout()
         self.is_connected = False
+
+    def _check_path_empty(self, path: str):
+        """
+        Assert that the target path is free
+
+        :param path: The targeted path
+        """
+        for mailbox in self.mailboxes():
+            if mailbox.path == path:
+                raise MailboxAlreadyExists(
+                    f"A mailbox already exists at '{mailbox.path}'"
+                )
+
+    def _check_is_connected(self):
+        """
+        Assert that the account is connected
+        """
+        if not self.is_connected:
+            raise NotConnected("You should be connected to perform this operation")
 
     def mailboxes(self, force: bool = True) -> List[Mailbox]:
         """
@@ -84,8 +102,7 @@ class Account(BaseModel):
         :raises MailboxFetchingFailed: If there is a problem with imap
         :return: The list of mailboxes
         """
-        if not self.is_connected:
-            raise NotConnected("You should be connected to perform this operation")
+        self._check_is_connected()
 
         if not self._mailboxes and force:
             status, raw_response = self._imap.list()
@@ -238,9 +255,9 @@ class Account(BaseModel):
         Select a mailbox
 
         :param mailbox: The mailbox to select
+        :raises NotConnected: If the user is not connected
         """
-        if not self.is_connected:
-            raise NotConnected("You should be connected to perform this operation")
+        self._check_is_connected()
 
         self.selected_mailbox = mailbox
         self._imap.select(mailbox.path)
@@ -260,20 +277,16 @@ class Account(BaseModel):
 
         :param mailbox: The mailbox to move
         :param path: The new path of the mailbox
+        :raises NotConnected: If the user is not connected
+        :raises MailboxAlreadyExists: If the mailbox already exists for the path
         """
-        if not self.is_connected:
-            raise NotConnected("You should be connected to perform this operation")
-
         if path == mailbox.path:
             return
 
-        old_path = mailbox.path
+        self._check_is_connected()
+        self._check_path_empty(path)
 
-        for mailbox in self.mailboxes():
-            if mailbox.path == path:
-                raise MailboxAlreadyExists(
-                    f"A mailbox already exists at '{mailbox.path}'"
-                )
+        old_path = mailbox.path
 
         self._imap.rename(old_path, path)
 
@@ -298,10 +311,10 @@ class Account(BaseModel):
         Search all message ids from the selected mailbox according to the policy
 
         :param policy: The policy to fetch message, defaults to all_
+        :raises NotConnected: If the user is not connected
         :return: The list of ids
         """
-        if not self.is_connected:
-            raise NotConnected("You should be connected to perform this operation")
+        self._check_is_connected()
 
         status, raw_response = self._imap.search(None, policy.to_imap_standard())
 
@@ -315,15 +328,38 @@ class Account(BaseModel):
 
         return [n for n in raw_list]
 
+    def create_mailbox(self, path: str) -> Mailbox:
+        """
+        Create a mailbox from a path
+
+        :param path: The path of the new mailbox
+        :return: The newly mailbox
+        """
+        self._check_path_empty(path)
+
+        mailbox = Mailbox(
+            label=path.split("/")[-1],
+            path=path,
+            kind=MailboxKind.CUSTOM,
+            has_children=False,
+            _account=self,
+        )
+
+        self._mailboxes.append(mailbox)
+
+        self._imap.create(path)
+
+        return mailbox
+
     def search_messages(self, policy: Policy = all_policy) -> List[Message]:
         """
         Search all messages from the selected mailbox according to the policy
 
         :param policy: The policy to fetch message, defaults to all_
+        :raises NotConnected: If the user is not connected
         :return: The list of messages
         """
-        if not self.is_connected:
-            raise NotConnected("You should be connected to perform this operation")
+        self._check_is_connected()
 
         message_ids = self.search_message_ids(policy)
         status, raw_response = self._imap.fetch(
