@@ -8,6 +8,7 @@ from .exception import (
     LoginFailed,
     MailboxAlreadyExists,
     MailboxFetchingFailed,
+    MailboxNotDeletable,
     MailboxNotFound,
     MessageFetchingFailed,
     MessageSearchingFailed,
@@ -126,7 +127,7 @@ class Account(BaseModel):
         :return: The list of mailboxes
         """
         mailboxes = self.mailboxes()
-        return [mailbox for mailbox in mailboxes if getattr(mailbox, attr) is value]
+        return [mailbox for mailbox in mailboxes if getattr(mailbox, attr) == value]
 
     def _mailbox_from_attr(self, attr: str, value: Any) -> List[Mailbox]:
         """
@@ -332,9 +333,10 @@ class Account(BaseModel):
         """
         Create a mailbox from a path
 
-        :param path: The path of the new mailbox
+        :param path: The path of the mailbox to create
         :return: The newly mailbox
         """
+        self._check_is_connected()
         self._check_path_empty(path)
 
         mailbox = Mailbox(
@@ -346,10 +348,35 @@ class Account(BaseModel):
         )
 
         self._mailboxes.append(mailbox)
-
         self._imap.create(path)
 
         return mailbox
+
+    def delete_mailbox(self, mailbox: Mailbox):
+        """
+        Delete a particular mailbox
+
+        :param path: The mailbox to delete
+        """
+        self._check_is_connected()
+
+        if mailbox.kind is not MailboxKind.CUSTOM:
+            raise MailboxNotDeletable("You can't delete a not custom mailbox")
+
+        try:
+            self._mailboxes = self.mailboxes().remove(mailbox)
+            self._imap.delete(mailbox.path)
+        except ValueError:
+            raise MailboxNotFound(f"The mailbox {mailbox.path} is not found")
+
+    def delete_mailbox_from_path(self, path: str):
+        """
+        Delete a particular mailbox from path
+
+        :param path: The path of the mailbox to delete
+        """
+        mailbox = self.mailbox_from_path(path)
+        return self.delete_mailbox(mailbox)
 
     def search_messages(self, policy: Policy = all_policy) -> List[Message]:
         """
