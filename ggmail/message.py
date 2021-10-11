@@ -1,4 +1,3 @@
-import re
 from datetime import datetime
 from email import message_from_bytes
 from email.header import decode_header
