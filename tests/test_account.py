@@ -7,6 +7,8 @@ from pytest import fixture, raises
 from ggmail.account import Account
 from ggmail.exception import (
     AlreadyConnected,
+    FlagAlreadyAttached,
+    FlagNotAttached,
     LoginFailed,
     MailboxAlreadyExists,
     MailboxFetchingFailed,
@@ -675,6 +677,15 @@ class TestAccountBulkOperation:
         for message in messages:
             assert Flag.FLAGGED in message.flags
 
+    def test_add_flag_messages_already_attached(
+        self, logged_account_with_inbox, messages
+    ):
+        for message in messages:
+            message.flags.append(Flag.FLAGGED)
+
+        with raises(FlagAlreadyAttached):
+            logged_account_with_inbox.add_flag_messages(messages, Flag.FLAGGED)
+
     @patch.object(IMAP4_SSL, "uid")
     def test_remove_flag_messages(
         self, imap_uid_mock, logged_account_with_inbox, messages
@@ -685,3 +696,9 @@ class TestAccountBulkOperation:
         imap_uid_mock.assert_called_once_with("STORE", "1,2", "-FLAGS", "\\Flagged")
         for message in messages:
             assert Flag.FLAGGED not in message.flags
+
+    def test_remove_flag_messages_not_attached(
+        self, logged_account_with_inbox, messages
+    ):
+        with raises(FlagNotAttached):
+            logged_account_with_inbox.remove_flag_messages(messages, Flag.FLAGGED)
