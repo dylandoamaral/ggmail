@@ -13,7 +13,6 @@ from ggmail.message import (
     decode_content,
     decode_flags,
     decode_subject,
-    decode_uid,
     get_content_type,
     message_factory,
 )
@@ -57,7 +56,7 @@ class TestMessageFlag:
             pytest.param(Flag.SEEN, "seen", id="seen"),
         ],
     )
-    def test_add_flag(self, imap_uid_mock, flag, function, logged_account):
+    def test_add_flag_message(self, imap_uid_mock, flag, function, logged_account):
         message = Message(
             uid="",
             from_="",
@@ -75,7 +74,7 @@ class TestMessageFlag:
         assert message.flags == [flag]
 
     @patch.object(IMAP4_SSL, "uid")
-    def test_add_flag_already_attached(self, imap_uid_mock, logged_account):
+    def test_add_flag_message_already_attached(self, imap_uid_mock, logged_account):
         message = Message(
             uid="",
             from_="",
@@ -103,7 +102,7 @@ class TestMessageFlag:
             pytest.param(Flag.SEEN, "unseen", id="seen"),
         ],
     )
-    def test_remove_flag(self, imap_uid_mock, flag, function, logged_account):
+    def test_remove_flag_message(self, imap_uid_mock, flag, function, logged_account):
         message = Message(
             uid="",
             from_="",
@@ -121,7 +120,7 @@ class TestMessageFlag:
         assert message.flags == []
 
     @patch.object(IMAP4_SSL, "uid")
-    def test_remove_flag_not_attached(self, imap_uid_mock, logged_account):
+    def test_remove_flag_message_not_attached(self, imap_uid_mock, logged_account):
         message = Message(
             uid="",
             from_="",
@@ -159,7 +158,7 @@ class TestMoveMessage:
 
         message.copy(mailbox)
 
-        imap_uid_mock.assert_called_once_with("Copy", "1", "Mailbox")
+        imap_uid_mock.assert_called_once_with("COPY", "1", "Mailbox")
 
     @patch.object(IMAP4_SSL, "uid")
     def test_move_message(self, imap_uid_mock, logged_account):
@@ -244,22 +243,14 @@ class TestMessageDecoders:
         assert Flag.SEEN in flags
         assert len(flags) == 2
 
-    def test_decode_uid(self):
-        header = b"6 (UID 24"
-        uid = decode_uid(header)
-
-        assert uid == "24"
-
 
 class TestMessageFactory:
     @patch("ggmail.message.message_from_bytes")
     @patch("ggmail.message.decode_subject")
     @patch("ggmail.message.decode_content")
     @patch("ggmail.message.decode_flags")
-    @patch("ggmail.message.decode_uid")
     def test_message_factory(
         self,
-        decode_uid_mock,
         decode_flags_mock,
         decode_content_mock,
         decode_subject_mock,
@@ -280,11 +271,10 @@ class TestMessageFactory:
         decode_content_mock.return_value = "body", r"<html>body<\html>"
         decode_subject_mock.return_value = "Subject"
         decode_flags_mock.return_value = []
-        decode_uid_mock.return_value = "1"
 
         email_mock.return_value = message
 
-        message = message_factory([b"", b""], ANY)
+        message = message_factory("1", [b"", b""], ANY)
 
         assert message.uid == "1"
         assert message.subject == "Subject"

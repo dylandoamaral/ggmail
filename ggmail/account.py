@@ -375,10 +375,10 @@ class Account(BaseModel):
         """
         self._check_is_connected()
 
-        status, raw_response = self._imap.search(None, policy.to_imap_standard())
+        status, raw_response = self._imap.uid("SEARCH", None, policy.to_imap_standard())
 
         if status != "OK":
-            raise MessageSearchingFailed("Unable to search message uids")
+            raise MessageSearchingFailed("Unable to retrieve message uids")
 
         raw_list = raw_response[0].decode("utf8").split(" ")
 
@@ -387,7 +387,7 @@ class Account(BaseModel):
 
         return [n for n in raw_list]
 
-    def search_messages(self, policy: Policy = all_policy) -> List[Message]:
+    def fetch_messages(self, policy: Policy = all_policy) -> List[Message]:
         """
         Search all messages from the selected mailbox according to the policy
 
@@ -403,27 +403,69 @@ class Account(BaseModel):
             return []
 
         status, raw_response = self._imap.fetch(
-            ",".join(message_uids), "(BODY.PEEK[] FLAGS UID)"
+            ",".join(message_uids), "(BODY.PEEK[] FLAGS)"
         )
 
         if status != "OK":
-            raise MessageFetchingFailed("Unable to fetch message")
+            raise MessageFetchingFailed("Unable to fetch messages")
 
-        return [
-            message_factory(raw_message_description, self)
+        raw_messages = [
+            raw_message_description
             for (index, raw_message_description) in enumerate(raw_response)
             if index % 2 == 0
         ]
+
+        return [
+            message_factory(uid, raw_message_description, self)
+            for (uid, raw_message_description) in zip(message_uids, raw_messages)
+        ]
+
+    def search_messages(self, policy: Policy = all_policy) -> List[Message]:
+        """
+        Alias of `ggmail.Account.fetch_messages`
+        """
+        return self.fetch_messages(policy)
 
     def copy_message(self, message: Message, mailbox: Mailbox):
         """
         Copy a message to another mailbox
 
         :param message: The message to copy
-        :param mailbox: The other mailbox
+        :param mailbox: The mailbox containing the new copy
+        """
+        self.copy_message_using_uid(message.uid, mailbox)
+
+    def copy_messages(self, messages: List[Message], mailbox: Mailbox):
+        """
+        Copy messages to another mailbox
+
+        :param messages: The messages to copy
+        :param mailbox: The mailbox containing the new copy
+        """
+        uids = [message.uid for message in messages]
+        self.copy_messages_using_uids(uids, mailbox)
+
+    def copy_message_using_uid(self, uid: str, mailbox: Mailbox):
+        """
+        Copy a message to another mailbox using its uid
+
+        :param uid: The message's uid
+        :param mailbox: The mailbox containing the new copy
+        :raises NotConnected: If the user is not connected
         """
         self._check_is_connected()
-        self._imap.uid("Copy", message.uid, mailbox.path)
+        self._imap.uid("COPY", uid, mailbox.path)
+
+    def copy_messages_using_uids(self, uids: List[str], mailbox: Mailbox):
+        """
+        Copy message to another mailbox using their uids
+
+        :param uids: The message's uids
+        :param mailbox: The mailbox containing the new copy
+        :raises NotConnected: If the user is not connected
+        """
+        self._check_is_connected()
+        self._imap.uid("COPY", ",".join(uids), mailbox.path)
 
     def move_message(
         self, message: Message, mailbox: Mailbox, with_expunge: bool = False
@@ -434,31 +476,129 @@ class Account(BaseModel):
 
         :param message: The message to move
         :param mailbox: The other mailbox
-        :param with_expunge: If you permanently delete the message from the source
+        :param with_expunge: True if you permanently delete the message from the source,
+                             False else
+        :raises NotConnected: If the user is not connected
         """
-        self.copy_message(message, mailbox)
-        message.delete()
+        self.move_message_using_uid(message.uid, mailbox, with_expunge)
+        message.flags.append(Flag.DELETED)
+
+    def move_messages(
+        self, messages: List[Message], mailbox: Mailbox, with_expunge: bool = False
+    ):
+        """
+        Move messages to another mailbox, if you don't set with_expunge to True, you
+        will still see the mail in the source mailbox.
+
+        :param messages: The messages to move
+        :param mailbox: The other mailbox
+        :param with_expunge: True if you permanently delete the message from the source,
+                             False else
+        :raises NotConnected: If the user is not connected
+        """
+        uids = [message.uid for message in messages]
+        self.move_messages_using_uids(uids, mailbox, with_expunge)
+        for message in messages:
+            message.flags.append(Flag.DELETED)
+
+    def move_message_using_uid(
+        self, uid: str, mailbox: Mailbox, with_expunge: bool = False
+    ):
+        """
+        Move a message to another mailbox using its uid, if you don't set with_expunge
+        to True, you will still see the mail in the source mailbox.
+
+        :param uid: The message's uid
+        :param mailbox: The mailbox containing the new copy
+        :param with_expunge: True if you permanently delete the message from the source,
+                             False else
+        :raises NotConnected: If the user is not connected
+        """
+        self.copy_message_using_uid(uid, mailbox)
+        self.add_flag_message_using_uid(uid, Flag.DELETED)
         if with_expunge:
             self.expunge()
 
-    def add_flag_message(self, message: Message, flag: Flag):
+    def move_messages_using_uids(
+        self, uids: List[str], mailbox: Mailbox, with_expunge: bool = False
+    ):
+        """
+        Move messages to another mailbox using their uids, if you don't set
+        with_expunge to True, you will still see the mail in the source mailbox.
+
+        :param uids: The message's uids
+        :param mailbox: The mailbox containing the new copy
+        :param with_expunge: True if you permanently delete the message from the source,
+                             False else
+        :raises NotConnected: If the user is not connected
+        """
+        self.copy_messages_using_uids(uids, mailbox)
+        self.add_flag_messages_using_uids(uids, Flag.DELETED)
+        if with_expunge:
+            self.expunge()
+
+    def add_flag_message(self, message: Message, flag: Flag, using_uid: bool = True):
         """
         Add a flag to the message
 
         :param message: The message to update
         :param flag: The flag to add
-        :raises NotConnected: If the user is not connected
-        :raises FlagAlreadyAttached: If the flag is already attached
-        """
-        self._check_is_connected()
 
+        :raises NotConnected: If the user is not connected
+        """
         if flag in message.flags:
             raise FlagAlreadyAttached(
-                f"The flag {flag} is already attached to the message"
+                f"The flag {flag} is already attached to the message with the uid "
+                f"{message.uid}"
             )
 
+        self.add_flag_message_using_uid(message.uid, flag)
         self._imap.uid("STORE", message.uid, "+FLAGS", flag.value)
+
         message.flags.append(flag)
+
+    def add_flag_messages(self, messages: List[Message], flag: Flag):
+        """
+        Add a flag to all messages
+
+        :param messages: The messages to update
+        :param flag: The flag to add
+        :raises NotConnected: If the user is not connected
+        """
+        for message in messages:
+            if flag in message.flags:
+                raise FlagAlreadyAttached(
+                    f"The flag {flag} is already attached to the message with the uid "
+                    f"{message.uid}"
+                )
+
+        uids = [message.uid for message in messages]
+        self.add_flag_messages_using_uids(uids, flag)
+
+        for message in messages:
+            message.flags.append(flag)
+
+    def add_flag_message_using_uid(self, uid: str, flag: Flag):
+        """
+        Add a flag to the message using its uid
+
+        :param uid: The message's uid
+        :param flag: The flag to add
+        :raises NotConnected: If the user is not connected
+        """
+        self._check_is_connected()
+        self._imap.uid("STORE", uid, "+FLAGS", flag.value)
+
+    def add_flag_messages_using_uids(self, uids: List[str], flag: Flag):
+        """
+        Add a flag to all messages referenced by one of the uids
+
+        :param uids: The message's uids
+        :param flag: The flag to add
+        :raises NotConnected: If the user is not connected
+        """
+        self._check_is_connected()
+        self._imap.uid("STORE", ",".join(uids), "+FLAGS", flag.value)
 
     def remove_flag_message(self, message: Message, flag: Flag):
         """
@@ -472,7 +612,56 @@ class Account(BaseModel):
         self._check_is_connected()
 
         if flag not in message.flags:
-            raise FlagNotAttached(f"The flag {flag} is not attached to the message")
+            raise FlagNotAttached(
+                f"The flag {flag} not attached to the message with the uid "
+                f"{message.uid}"
+            )
 
-        self._imap.uid("STORE", message.uid, "-FLAGS", flag.value)
+        self.remove_flag_message_using_uid(message.uid, flag)
+
         message.flags.remove(flag)
+
+    def remove_flag_messages(self, messages: List[Message], flag: Flag):
+        """
+        Remove a flag to all messages
+
+        :param messages: The messages to remove
+        :param flag: The flag to add
+        :raises NotConnected: If the user is not connected
+        """
+        self._check_is_connected()
+
+        for message in messages:
+            if flag not in message.flags:
+                raise FlagNotAttached(
+                    f"The flag {flag} is already attached to the message with the uid "
+                    f"{message.uid}"
+                )
+
+        uids = [message.uid for message in messages]
+        self.remove_flag_messages_using_uids(uids, flag)
+
+        for message in messages:
+            message.flags.remove(flag)
+
+    def remove_flag_message_using_uid(self, uid: str, flag: Flag):
+        """
+        Remove a flag to the message using its uid
+
+        :param uid: The message's uid
+        :param flag: The flag to add
+        :raises NotConnected: If the user is not connected
+        """
+        self._check_is_connected()
+        self._imap.uid("STORE", uid, "-FLAGS", flag.value)
+
+    def remove_flag_messages_using_uids(self, uids: List[str], flag: Flag):
+        """
+        Remove a flag to all messages referenced by one of the uids
+
+        :param uids: The message's uids
+        :param flag: The flag to add
+        :raises NotConnected: If the user is not connected
+        """
+        self._check_is_connected()
+        self._imap.uid("STORE", ",".join(uids), "-FLAGS", flag.value)
