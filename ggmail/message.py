@@ -52,7 +52,7 @@ class Message(BaseModel):
         """
         return self._account.move_message(self, mailbox, with_expunge)
 
-    def add_flag(self, flag: Flag):
+    def add_flag_message(self, flag: Flag):
         """
         Add the flag to the message
 
@@ -60,7 +60,7 @@ class Message(BaseModel):
         """
         return self._account.add_flag_message(self, flag)
 
-    def remove_flag(self, flag: Flag):
+    def remove_flag_message(self, flag: Flag):
         """
         Remove the flag to the message
 
@@ -80,13 +80,13 @@ class Message(BaseModel):
         """
         Add answered flag to the message
         """
-        return self.add_flag(Flag.ANSWERED)
+        return self.add_flag_message(Flag.ANSWERED)
 
     def unanswer(self):
         """
         Remove answered flag to the message
         """
-        return self.remove_flag(Flag.ANSWERED)
+        return self.remove_flag_message(Flag.ANSWERED)
 
     def is_deleted(self) -> bool:
         """
@@ -100,13 +100,13 @@ class Message(BaseModel):
         """
         Add delete flag to the message
         """
-        self.add_flag(Flag.DELETED)
+        self.add_flag_message(Flag.DELETED)
 
     def undelete(self):
         """
         Remove delete flag to the message
         """
-        return self.remove_flag(Flag.DELETED)
+        return self.remove_flag_message(Flag.DELETED)
 
     def is_draft(self) -> bool:
         """
@@ -120,13 +120,13 @@ class Message(BaseModel):
         """
         Add draft flag to the message
         """
-        return self.add_flag(Flag.DRAFT)
+        return self.add_flag_message(Flag.DRAFT)
 
     def undraft(self):
         """
         Remove draft flag to the message
         """
-        return self.remove_flag(Flag.DRAFT)
+        return self.remove_flag_message(Flag.DRAFT)
 
     def is_starred(self) -> bool:
         """
@@ -140,13 +140,13 @@ class Message(BaseModel):
         """
         Add flagged flag to the message
         """
-        return self.add_flag(Flag.FLAGGED)
+        return self.add_flag_message(Flag.FLAGGED)
 
     def unstar(self):
         """
         Remove flagged flag to the message
         """
-        return self.remove_flag(Flag.FLAGGED)
+        return self.remove_flag_message(Flag.FLAGGED)
 
     def is_seen(self) -> bool:
         """
@@ -160,13 +160,13 @@ class Message(BaseModel):
         """
         Add seen flag to the message
         """
-        return self.add_flag(Flag.SEEN)
+        return self.add_flag_message(Flag.SEEN)
 
     def unseen(self):
         """
         Remove seen flag to the message
         """
-        return self.remove_flag(Flag.SEEN)
+        return self.remove_flag_message(Flag.SEEN)
 
 
 def decode_subject(subject: str) -> str:
@@ -212,24 +212,15 @@ def decode_flags(header: bytes) -> List[Flag]:
     return [Flag(flag.decode("utf8")) for flag in raw_flags]
 
 
-def decode_uid(header: bytes) -> str:
-    """
-    Decode uid from the header
-
-    :param header: The header
-    :return: The uid
-    """
-    return re.search(r"UID (\d+)", header.decode("utf8")).groups(1)[0]
-
-
 def get_content_type(content_type: str) -> ContentType:
     return ContentType.MULTIPART if content_type == "multipart" else ContentType.TEXT
 
 
-def message_factory(raw_message_description: List[bytes], account) -> Message:
+def message_factory(uid: str, raw_message_description: List[bytes], account) -> Message:
     """
     Create a message from a raw byte description of the message
 
+    :param uid: The uid of the message
     :param raw_message_description: The description of the message
     :paam account: The account
     :return: The message
@@ -237,7 +228,6 @@ def message_factory(raw_message_description: List[bytes], account) -> Message:
     raw_header, raw_message = raw_message_description
     message = message_from_bytes(raw_message)
 
-    uid = decode_uid(raw_header)
     from_ = message["From"]
     to = message["To"]
     subject = decode_subject(message["Subject"])

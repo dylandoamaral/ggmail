@@ -16,6 +16,7 @@ from ggmail.exception import (
     MessageSearchingFailed,
     NotConnected,
 )
+from ggmail.flag import Flag
 from ggmail.mailbox import Mailbox, MailboxKind
 
 
@@ -523,19 +524,19 @@ class TestAccountDeleteMailbox:
 
 
 class TestAccountSearchMessage:
-    @patch.object(IMAP4_SSL, "search")
+    @patch.object(IMAP4_SSL, "uid")
     def test_search_message_uids(self, imap_search_mock, logged_account):
         imap_search_mock.return_value = "OK", [b"1 2 3"]
         message_ids = logged_account.search_message_uids()
         assert message_ids == ["1", "2", "3"]
 
-    @patch.object(IMAP4_SSL, "search")
+    @patch.object(IMAP4_SSL, "uid")
     def test_search_message_uids_empty(self, imap_search_mock, logged_account):
         imap_search_mock.return_value = "OK", [b""]
         message_ids = logged_account.search_message_uids()
         assert message_ids == []
 
-    @patch.object(IMAP4_SSL, "search")
+    @patch.object(IMAP4_SSL, "uid")
     def test_search_message_uids_ko(self, imap_search_mock, logged_account):
         imap_search_mock.return_value = "KO", []
 
@@ -563,7 +564,9 @@ class TestAccountSearchMessage:
         messages = logged_account.search_messages()
 
         assert len(messages) == 2
-        message_factory_mock.assert_has_calls([call(b"msg1", ANY), call(b"msg2", ANY)])
+        message_factory_mock.assert_has_calls(
+            [call("1", b"msg1", ANY), call("2", b"msg2", ANY)]
+        )
 
     @patch.object(Account, "search_message_uids")
     @patch("ggmail.account.message_factory")
@@ -600,7 +603,9 @@ class TestAccountSearchMessage:
         messages = inbox.search()
 
         assert len(messages) == 2
-        message_factory_mock.assert_has_calls([call(b"msg1", ANY), call(b"msg2", ANY)])
+        message_factory_mock.assert_has_calls(
+            [call("1", b"msg1", ANY), call("2", b"msg2", ANY)]
+        )
 
     @patch.object(IMAP4_SSL, "fetch")
     @patch.object(Account, "search_message_uids")
@@ -626,3 +631,57 @@ class TestAccountExpunge:
     def test_expunge(self, imap_expunge_mock, logged_account):
         logged_account.expunge()
         imap_expunge_mock.assert_called_once()
+
+
+class TestAccountBulkOperation:
+    @patch.object(IMAP4_SSL, "uid")
+    def test_copy_messages(self, imap_uid_mock, logged_account_with_inbox, messages):
+        inbox = logged_account_with_inbox.inbox()
+        logged_account_with_inbox.copy_messages(messages, inbox)
+        imap_uid_mock.assert_called_once_with("COPY", "1,2", inbox.path)
+
+    @patch.object(IMAP4_SSL, "uid")
+    def test_move_messages(self, imap_uid_mock, logged_account_with_inbox, messages):
+        inbox = logged_account_with_inbox.inbox()
+        logged_account_with_inbox.move_messages(messages, inbox)
+        imap_uid_mock.has_calls(
+            call("COPY", "1,2", inbox.path),  # Copy from the origin
+            call("STORE", "1,2", "+FLAGS", "\\Deleted"),  # Remove the origin
+        )
+        for message in messages:
+            assert Flag.DELETED in message.flags
+
+    @patch.object(IMAP4_SSL, "expunge")
+    @patch.object(IMAP4_SSL, "uid")
+    def test_move_messages_with_expunge(
+        self, imap_uid_mock, imap_expungd_mock, logged_account_with_inbox, messages
+    ):
+        inbox = logged_account_with_inbox.inbox()
+        logged_account_with_inbox.move_messages(messages, inbox, with_expunge=True)
+        imap_uid_mock.has_calls(
+            call("COPY", "1,2", inbox.path),  # Copy from the origin
+            call("STORE", "1,2", "+FLAGS", "\\Deleted"),  # Remove the origin
+        )
+        imap_expungd_mock.assert_called_once()
+        for message in messages:
+            assert Flag.DELETED in message.flags
+
+    @patch.object(IMAP4_SSL, "uid")
+    def test_add_flag_messages(
+        self, imap_uid_mock, logged_account_with_inbox, messages
+    ):
+        logged_account_with_inbox.add_flag_messages(messages, Flag.FLAGGED)
+        imap_uid_mock.assert_called_once_with("STORE", "1,2", "+FLAGS", "\\Flagged")
+        for message in messages:
+            assert Flag.FLAGGED in message.flags
+
+    @patch.object(IMAP4_SSL, "uid")
+    def test_remove_flag_messages(
+        self, imap_uid_mock, logged_account_with_inbox, messages
+    ):
+        for message in messages:
+            message.flags.append(Flag.FLAGGED)
+        logged_account_with_inbox.remove_flag_messages(messages, Flag.FLAGGED)
+        imap_uid_mock.assert_called_once_with("STORE", "1,2", "-FLAGS", "\\Flagged")
+        for message in messages:
+            assert Flag.FLAGGED not in message.flags
