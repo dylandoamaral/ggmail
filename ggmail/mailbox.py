@@ -56,16 +56,33 @@ class Mailbox(BaseModel):
         """
         self._account.select_mailbox(self)
 
-    def search(self, policy: Policy = all_policy) -> List[Message]:
+    def search_uids(self, policy: Policy = all_policy) -> List[Message]:
+        """
+        Search all message uids from the mailbox according to the policy, the mailbox
+        become the selected mailbox
+
+        :param policy: The policy to fetch message uids, defaults to all_
+        :return: The list of message uids
+        """
+        self.select()
+        return self._account.search_message_uids(policy)
+
+    def fetch(self, policy: Policy = all_policy) -> List[Message]:
         """
         Search all messages from the mailbox according to the policy, the mailbox become
         the selected mailbox
 
-        :param policy: The policy to fetch message, defaults to all_
+        :param policy: The policy to fetch messages, defaults to all_
         :return: The list of messages
         """
         self.select()
-        return self._account.search_messages(policy)
+        return self._account.fetch_messages(policy)
+
+    def search(self, policy: Policy = all_policy) -> List[Message]:
+        """
+        Alias of `ggmail.mailbox.Mailbox.fetch`
+        """
+        return self.fetch(policy)
 
 
 def mailbox_factory(raw_mailbox_description: bytes, account) -> Mailbox:

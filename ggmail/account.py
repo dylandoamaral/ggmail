@@ -422,7 +422,7 @@ class Account(BaseModel):
 
     def search_messages(self, policy: Policy = all_policy) -> List[Message]:
         """
-        Alias of `ggmail.Account.fetch_messages`
+        Alias of `ggmail.account.Account.fetch_messages`
         """
         return self.fetch_messages(policy)
 
