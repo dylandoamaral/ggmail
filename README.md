@@ -2,6 +2,9 @@
 
 [![GGmail Continuous Integration](https://github.com/dylandoamaral/ggmail/actions/workflows/ci.yml/badge.svg)](https://github.com/dylandoamaral/ggmail/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/dylandoamaral/ggmail/branch/main/graph/badge.svg?token=KY5JTQWZLF)](https://codecov.io/gh/dylandoamaral/ggmail)
+[![PyPI version](https://badge.fury.io/py/ggmail.svg)](https://badge.fury.io/py/ggmail)
+[![downloads](https://pepy.tech/badge/ggmail/month)](https://pepy.tech/project/ggmail)
+[![versions](https://img.shields.io/pypi/pyversions/ggmail.svg)](https://github.com/dylandoamaral/ggmail)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Manage gmail account using python, forget about imap and just code what you supposed to do.
