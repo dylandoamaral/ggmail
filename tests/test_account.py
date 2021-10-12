@@ -20,6 +20,7 @@ from ggmail.exception import (
 )
 from ggmail.flag import Flag
 from ggmail.mailbox import Mailbox, MailboxKind
+from ggmail.policy import all_
 
 
 @fixture
@@ -526,15 +527,21 @@ class TestAccountDeleteMailbox:
 
 
 class TestAccountSearchMessage:
+    @patch.object(IMAP4_SSL, "select")
     @patch.object(IMAP4_SSL, "uid")
-    def test_search_message_uids(self, imap_search_mock, logged_account):
-        imap_search_mock.return_value = "OK", [b"1 2 3"]
-        message_ids = logged_account.search_message_uids()
+    def test_search_message_uids(
+        self, imap_uid_mock, imap_search_mock, logged_account_with_inbox
+    ):
+        imap_uid_mock.return_value = "OK", [b"1 2 3"]
+        inbox = logged_account_with_inbox.inbox()
+        message_ids = inbox.search_uids(all_)
         assert message_ids == ["1", "2", "3"]
+        imap_uid_mock.assert_called_once_with("SEARCH", None, "ALL")
+        imap_search_mock.assert_called_once()
 
     @patch.object(IMAP4_SSL, "uid")
-    def test_search_message_uids_empty(self, imap_search_mock, logged_account):
-        imap_search_mock.return_value = "OK", [b""]
+    def test_search_message_uids_empty(self, imap_uid_mock, logged_account):
+        imap_uid_mock.return_value = "OK", [b""]
         message_ids = logged_account.search_message_uids()
         assert message_ids == []
 
