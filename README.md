@@ -20,11 +20,11 @@ Install using `pip install ggmail`.
 ## A Simple Example
 
 ```python
-from ggmail import Account
+from ggmail import Account, Login
 from ggmail.policy import from_contains, flagged
 
-account = Account(username="ggmail@gmail.com", password="secret")
-with account:
+authentication = Login(username="ggmail@gmail.com", password="secret")
+with Account(authentication=authentication) as account:
     inbox = account.inbox()
     mailbox = account.create_mailbox("Favorite")
     policy = from_contains("from@gmail.com") + flagged

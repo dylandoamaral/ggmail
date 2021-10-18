@@ -1,13 +1,13 @@
-from imaplib import IMAP4, IMAP4_SSL
+from imaplib import IMAP4_SSL
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, PrivateAttr, SecretStr
+from pydantic import BaseModel, PrivateAttr
 
+from .authentication import Authentication
 from .exception import (
     AlreadyConnected,
     FlagAlreadyAttached,
     FlagNotAttached,
-    LoginFailed,
     MailboxAlreadyExists,
     MailboxFetchingFailed,
     MailboxNotDeletable,
@@ -24,8 +24,7 @@ from .policy import all_ as all_policy
 
 
 class Account(BaseModel):
-    username: str
-    password: SecretStr
+    authentication: Authentication
 
     _imap: IMAP4_SSL = PrivateAttr()
     _mailboxes: List[Mailbox] = PrivateAttr([])
@@ -58,13 +57,8 @@ class Account(BaseModel):
         if self.is_connected:
             raise AlreadyConnected("You are already connected")
 
-        try:
-            self._imap.login(self.username, self.password.get_secret_value())
-        except IMAP4.error:
-            raise LoginFailed(
-                "Can't login to your email account, verify your credentials "
-                "and ensure you granted access to less secure app."
-            )
+        self.authentication.login(self._imap)
+
         self.is_connected = True
 
     def logout(self):

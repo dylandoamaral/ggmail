@@ -1,4 +1,4 @@
-from imaplib import IMAP4, IMAP4_SSL
+from imaplib import IMAP4_SSL
 from unittest.mock import ANY, Mock, call, patch
 
 import pytest
@@ -6,10 +6,8 @@ from pytest import fixture, raises
 
 from ggmail.account import Account
 from ggmail.exception import (
-    AlreadyConnected,
     FlagAlreadyAttached,
     FlagNotAttached,
-    LoginFailed,
     MailboxAlreadyExists,
     MailboxFetchingFailed,
     MailboxNotDeletable,
@@ -37,28 +35,6 @@ def logged_account_with_inbox(logged_account):
     return logged_account
 
 
-class TestAccountLogin:
-    @patch.object(IMAP4_SSL, "login")
-    def test_login_success(self, imap_login_mock, account):
-        account.login()
-        assert account.is_connected is True
-
-    @patch.object(IMAP4_SSL, "login")
-    def test_login_already_connected(self, imap_login_mock, account):
-        account.login()
-
-        with raises(AlreadyConnected):
-            account.login()
-
-    @patch.object(IMAP4_SSL, "login")
-    def test_login_imap_error(self, imap_login_mock):
-        imap_login_mock.side_effect = IMAP4.error()
-        account = Account(username="test@gmail.com", password="secret")
-
-        with raises(LoginFailed):
-            account.login()
-
-
 class TestAccountLogout:
     def test_logout_success(self, logged_account):
         logged_account.logout()
@@ -73,7 +49,7 @@ class TestAccountContextManager:
     @patch.object(IMAP4_SSL, "logout")
     @patch.object(IMAP4_SSL, "login")
     def test_context_manager(self, imap_login_mock, imap_logout_mock, account):
-        with Account(username="test@gmail.com", password="secret"):
+        with account:
             pass
 
         imap_login_mock.assert_called_once()
