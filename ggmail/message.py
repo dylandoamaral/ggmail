@@ -22,7 +22,7 @@ class Message(BaseModel):
     from_: str
     to: str
     subject: str
-    body: str
+    body: Optional[str]
     html: Optional[str]
     date: datetime
     content_type: ContentType
