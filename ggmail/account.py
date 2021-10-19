@@ -458,6 +458,9 @@ class Account(BaseModel):
         :param mailbox: The mailbox containing the new copy
         :raises NotConnected: If the user is not connected
         """
+        if not uids:
+            return
+
         self._check_is_connected()
         self._imap.uid("COPY", ",".join(uids), mailbox.path)
 
@@ -591,6 +594,9 @@ class Account(BaseModel):
         :param flag: The flag to add
         :raises NotConnected: If the user is not connected
         """
+        if not uids:
+            return
+
         self._check_is_connected()
         self._imap.uid("STORE", ",".join(uids), "+FLAGS", flag.value)
 
@@ -657,5 +663,8 @@ class Account(BaseModel):
         :param flag: The flag to add
         :raises NotConnected: If the user is not connected
         """
+        if not uids:
+            return
+
         self._check_is_connected()
         self._imap.uid("STORE", ",".join(uids), "-FLAGS", flag.value)

@@ -626,6 +626,12 @@ class TestAccountBulkOperation:
         imap_uid_mock.assert_called_once_with("COPY", "1,2", inbox.path)
 
     @patch.object(IMAP4_SSL, "uid")
+    def test_copy_messages_empty(self, imap_uid_mock, logged_account_with_inbox):
+        inbox = logged_account_with_inbox.inbox()
+        logged_account_with_inbox.copy_messages([], inbox)
+        imap_uid_mock.assert_not_called()
+
+    @patch.object(IMAP4_SSL, "uid")
     def test_move_messages(self, imap_uid_mock, logged_account_with_inbox, messages):
         inbox = logged_account_with_inbox.inbox()
         logged_account_with_inbox.move_messages(messages, inbox)
@@ -660,6 +666,11 @@ class TestAccountBulkOperation:
         for message in messages:
             assert Flag.FLAGGED in message.flags
 
+    @patch.object(IMAP4_SSL, "uid")
+    def test_add_flag_messages_empty(self, imap_uid_mock, logged_account_with_inbox):
+        logged_account_with_inbox.add_flag_messages([], Flag.FLAGGED)
+        imap_uid_mock.assert_not_called()
+
     def test_add_flag_messages_already_attached(
         self, logged_account_with_inbox, messages
     ):
@@ -679,6 +690,11 @@ class TestAccountBulkOperation:
         imap_uid_mock.assert_called_once_with("STORE", "1,2", "-FLAGS", "\\Flagged")
         for message in messages:
             assert Flag.FLAGGED not in message.flags
+
+    @patch.object(IMAP4_SSL, "uid")
+    def test_remove_flag_messages_empty(self, imap_uid_mock, logged_account_with_inbox):
+        logged_account_with_inbox.remove_flag_messages([], Flag.FLAGGED)
+        imap_uid_mock.assert_not_called()
 
     def test_remove_flag_messages_not_attached(
         self, logged_account_with_inbox, messages
