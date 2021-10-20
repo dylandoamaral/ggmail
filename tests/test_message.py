@@ -10,12 +10,12 @@ from ggmail.flag import Flag
 from ggmail.message import (
     ContentType,
     Message,
+    decode_byte_best_effort,
     decode_content,
     decode_flags,
     decode_subject,
     get_content_type,
     message_factory,
-    decode_byte_best_effort,
 )
 
 

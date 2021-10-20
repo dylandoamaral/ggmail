@@ -9,8 +9,8 @@ from typing import List, Optional, Tuple
 
 from pydantic import BaseModel, PrivateAttr
 
-from .flag import Flag
 from .exception import UnknownBytes
+from .flag import Flag
 
 
 class ContentType(Enum):
