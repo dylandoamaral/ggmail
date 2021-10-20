@@ -15,6 +15,7 @@ from ggmail.message import (
     decode_subject,
     get_content_type,
     message_factory,
+    decode_byte_best_effort,
 )
 
 
@@ -210,6 +211,19 @@ class TestMoveMessage:
 
 
 class TestMessageDecoders:
+    @pytest.mark.parametrize(
+        "encoder",
+        [
+            pytest.param("utf-8", id="UTF8"),
+            pytest.param("latin_1", id="LATIN"),
+            pytest.param("utf_16", id="UTF16"),
+            pytest.param("ascii", id="ASCII"),
+        ],
+    )
+    def test_decode_byte_best_effort(self, encoder):
+        word = "word"
+        assert decode_byte_best_effort(word.encode(encoder))
+
     @patch("ggmail.message.decode_header")
     def test_decode_subject(self, decode_header_mock):
         decode_header_mock.return_value = [("Subject", None)]

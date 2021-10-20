@@ -10,6 +10,7 @@ from typing import List, Optional, Tuple
 from pydantic import BaseModel, PrivateAttr
 
 from .flag import Flag
+from .exception import UnknownBytes
 
 
 class ContentType(Enum):
@@ -168,6 +169,27 @@ class Message(BaseModel):
         return self.remove_flag_message(Flag.SEEN)
 
 
+def decode_byte_best_effort(data: bytes) -> str:
+    """
+    Try to decode the bytes using different decoders
+
+    :param data: The bytes to decode
+    :return: The string
+    """
+    if not isinstance(data, bytes):
+        return data
+
+    decoders = ["utf-8", "latin_1", "utf_16", "ascii"]
+
+    for decoder in decoders:
+        try:
+            return data.decode(decoder)
+        except UnicodeDecodeError:
+            continue
+
+    raise UnknownBytes(f"Can't decode {data} using {', '.join(decoders)}")
+
+
 def decode_subject(subject: str) -> str:
     """
     Decode the subject
@@ -176,7 +198,10 @@ def decode_subject(subject: str) -> str:
     :return: The decoded subject
     """
     pairs = decode_header(subject)
-    strs = [string.decode(charset) if charset else string for string, charset in pairs]
+    strs = [
+        string.decode(charset) if charset else decode_byte_best_effort(string)
+        for string, charset in pairs
+    ]
     return "".join(strs)
 
 
@@ -197,7 +222,7 @@ def decode_content(message: EmailMessage) -> Tuple[str, Optional[str]]:
     elif message.get_content_maintype() == "text":
         body = message.get_payload()
 
-    return body, html
+    return decode_byte_best_effort(body), decode_byte_best_effort(html)
 
 
 def decode_flags(header: bytes) -> List[Flag]:
@@ -208,7 +233,7 @@ def decode_flags(header: bytes) -> List[Flag]:
     :return: The message flags
     """
     raw_flags = ParseFlags(header)
-    return [Flag(flag.decode("utf8")) for flag in raw_flags]
+    return [Flag(decode_byte_best_effort(flag)) for flag in raw_flags]
 
 
 def get_content_type(content_type: str) -> ContentType:
