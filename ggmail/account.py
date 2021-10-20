@@ -396,12 +396,15 @@ class Account(BaseModel):
         if not message_uids:
             return []
 
-        status, raw_response = self._imap.fetch(
-            ",".join(message_uids), "(BODY.PEEK[] FLAGS)"
+        status, raw_response = self._imap.uid(
+            "FETCH", ",".join(message_uids), "(BODY.PEEK[] FLAGS)"
         )
 
         if status != "OK":
             raise MessageFetchingFailed("Unable to fetch messages")
+
+        if raw_response == [None]:
+            return []
 
         raw_messages = [
             raw_message_description
