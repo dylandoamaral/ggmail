@@ -532,22 +532,23 @@ class TestAccountSearchMessage:
         with raises(NotConnected):
             account.search_message_uids()
 
-    @patch.object(IMAP4_SSL, "fetch")
+    @patch.object(IMAP4_SSL, "uid")
     @patch.object(Account, "search_message_uids")
     @patch("ggmail.account.message_factory")
     def test_search_messages(
         self,
         message_factory_mock,
         account_search_message_uids_mock,
-        imap_fetch_mock,
+        imap_uid_mock,
         logged_account,
     ):
         account_search_message_uids_mock.return_value = ["1", "2"]
-        imap_fetch_mock.return_value = "OK", [b"msg1", b")", b"msg2", b")"]
+        imap_uid_mock.return_value = "OK", [b"msg1", b")", b"msg2", b")"]
         message_factory_mock.return_value = Mock()
 
         messages = logged_account.search_messages()
 
+        imap_uid_mock.assert_called_once_with("FETCH", "1,2", "(BODY.PEEK[] FLAGS)")
         assert len(messages) == 2
         message_factory_mock.assert_has_calls(
             [call("1", b"msg1", ANY), call("2", b"msg2", ANY)]
@@ -568,20 +569,38 @@ class TestAccountSearchMessage:
 
         assert len(messages) == 0
 
+    @patch.object(IMAP4_SSL, "uid")
+    @patch.object(Account, "search_message_uids")
+    @patch("ggmail.account.message_factory")
+    def test_search_messages_empty_none(
+        self,
+        message_factory_mock,
+        account_search_message_uids_mock,
+        imap_uid_mock,
+        logged_account,
+    ):
+        account_search_message_uids_mock.return_value = ["1"]
+        imap_uid_mock.return_value = "OK", [None]
+        message_factory_mock.return_value = Mock()
+
+        messages = logged_account.search_messages()
+
+        assert len(messages) == 0
+
     @patch.object(IMAP4_SSL, "select")
-    @patch.object(IMAP4_SSL, "fetch")
+    @patch.object(IMAP4_SSL, "uid")
     @patch.object(Account, "search_message_uids")
     @patch("ggmail.account.message_factory")
     def test_search_messages_from_mailbox(
         self,
         message_factory_mock,
         account_search_message_uids_mock,
-        imap_fetch_mock,
+        imap_uid_mock,
         imap_select_mock,
         logged_account_with_inbox,
     ):
         account_search_message_uids_mock.return_value = ["1", "2"]
-        imap_fetch_mock.return_value = "OK", [b"msg1", b")", b"msg2", b")"]
+        imap_uid_mock.return_value = "OK", [b"msg1", b")", b"msg2", b")"]
         message_factory_mock.return_value = Mock()
 
         inbox = logged_account_with_inbox.inbox()
@@ -592,16 +611,16 @@ class TestAccountSearchMessage:
             [call("1", b"msg1", ANY), call("2", b"msg2", ANY)]
         )
 
-    @patch.object(IMAP4_SSL, "fetch")
+    @patch.object(IMAP4_SSL, "uid")
     @patch.object(Account, "search_message_uids")
     def test_search_messages_ko(
         self,
         account_search_message_uids_mock,
-        imap_fetch_mock,
+        imap_uid_mock,
         logged_account,
     ):
         account_search_message_uids_mock.return_value = ["1", "2"]
-        imap_fetch_mock.return_value = "KO", []
+        imap_uid_mock.return_value = "KO", []
 
         with raises(MessageFetchingFailed):
             logged_account.search_messages()
