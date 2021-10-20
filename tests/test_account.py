@@ -569,6 +569,24 @@ class TestAccountSearchMessage:
 
         assert len(messages) == 0
 
+    @patch.object(IMAP4_SSL, "uid")
+    @patch.object(Account, "search_message_uids")
+    @patch("ggmail.account.message_factory")
+    def test_search_messages_empty_none(
+        self,
+        message_factory_mock,
+        account_search_message_uids_mock,
+        imap_uid_mock,
+        logged_account,
+    ):
+        account_search_message_uids_mock.return_value = ["1"]
+        imap_uid_mock.return_value = "OK", [None]
+        message_factory_mock.return_value = Mock()
+
+        messages = logged_account.search_messages()
+
+        assert len(messages) == 0
+
     @patch.object(IMAP4_SSL, "select")
     @patch.object(IMAP4_SSL, "uid")
     @patch.object(Account, "search_message_uids")
