@@ -49,10 +49,6 @@ class FlagAlreadyAttached(Exception):
     pass
 
 
-class UnknownBytes(Exception):
-    pass
-
-
 # Utf exception
 class WrongUTF7String(Exception):
     pass

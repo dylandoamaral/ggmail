@@ -9,7 +9,6 @@ from typing import List, Optional, Tuple
 
 from pydantic import BaseModel, PrivateAttr
 
-from .exception import UnknownBytes
 from .flag import Flag
 
 
@@ -179,15 +178,13 @@ def decode_byte_best_effort(data: bytes) -> str:
     if not isinstance(data, bytes):
         return data
 
-    decoders = ["utf-8", "latin_1", "utf_16", "ascii"]
+    decoders = ["ascii", "utf-8", "latin_1", "utf_16"]
 
     for decoder in decoders:
         try:
             return data.decode(decoder)
         except UnicodeDecodeError:
             continue
-
-    raise UnknownBytes(f"Can't decode {data} using {', '.join(decoders)}")
 
 
 def decode_subject(subject: str) -> str:

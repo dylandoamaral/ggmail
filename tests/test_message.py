@@ -221,8 +221,12 @@ class TestMessageDecoders:
         ],
     )
     def test_decode_byte_best_effort(self, encoder):
-        word = "word"
+        word = "word1234"
         assert decode_byte_best_effort(word.encode(encoder))
+
+    def test_decode_byte_best_effort_ignore(self):
+        word = "word"
+        assert word == decode_byte_best_effort(word)
 
     @patch("ggmail.message.decode_header")
     def test_decode_subject(self, decode_header_mock):
