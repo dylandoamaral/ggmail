@@ -329,7 +329,7 @@ class Account(BaseModel):
         self._imap.create(path)
 
         return mailbox
-    
+
     def get_or_create_mailbox(self, path: str) -> Mailbox:
         """
         Create a mailbox from a path, if it exists, returns the

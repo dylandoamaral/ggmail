@@ -19,7 +19,10 @@ class TestAuthenticationLogin:
     @pytest.mark.parametrize(
         "authentication",
         [
-            pytest.param(google, id="google",),
+            pytest.param(
+                google,
+                id="google",
+            ),
             pytest.param(google_oauth2, id="google_oauth2"),
             pytest.param(outlook, id="outlook"),
         ],
@@ -36,7 +39,10 @@ class TestAuthenticationLogin:
     @pytest.mark.parametrize(
         "authentication",
         [
-            pytest.param(google, id="google",),
+            pytest.param(
+                google,
+                id="google",
+            ),
             pytest.param(google_oauth2, id="google_oauth2"),
             pytest.param(outlook, id="outlook"),
         ],
@@ -55,7 +61,10 @@ class TestAuthenticationLogin:
     @pytest.mark.parametrize(
         "authentication",
         [
-            pytest.param(google, id="google",),
+            pytest.param(
+                google,
+                id="google",
+            ),
             pytest.param(google_oauth2, id="google_oauth2"),
             pytest.param(outlook, id="outlook"),
         ],

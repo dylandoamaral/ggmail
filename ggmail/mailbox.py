@@ -22,6 +22,7 @@ class MailboxKind(Enum):
     CUSTOM = auto()
     MARKED = auto()
 
+
 class Mailbox(BaseModel):
     label: str
     path: str

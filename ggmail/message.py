@@ -167,11 +167,13 @@ class Message(BaseModel):
         """
         return self.remove_flag_message(Flag.SEEN)
 
+
 def _decode_bytes(data: bytes, encoding: str) -> str:
     """
     Internal method to help data.decode to be mockable
     """
     return data.decode(encoding)
+
 
 def decode_byte_best_effort(data: bytes, encoding: Optional[str] = None) -> str:
     """
@@ -179,7 +181,6 @@ def decode_byte_best_effort(data: bytes, encoding: Optional[str] = None) -> str:
 
     :param data: The bytes to decode
     :param encoding: The guessed encoding
-    :raises UnicodeDecodeError: The message can't be decoded using one of the available decoders
     :return: The string
     """
     if not isinstance(data, bytes):
@@ -191,7 +192,7 @@ def decode_byte_best_effort(data: bytes, encoding: Optional[str] = None) -> str:
         encodings = base_encodings
     else:
         encodings = [encoding] + base_encodings
-    
+
     # Transform the list to a fake ordered set
     encodings = list(dict.fromkeys(encodings))
 
@@ -200,7 +201,7 @@ def decode_byte_best_effort(data: bytes, encoding: Optional[str] = None) -> str:
             return _decode_bytes(data, encoding)
         except (UnicodeDecodeError, LookupError):
             continue
-    
+
     return "UNKNOWN"
 
 
@@ -212,10 +213,7 @@ def decode_subject(subject: str) -> str:
     :return: The decoded subject
     """
     pairs = decode_header(subject)
-    strs = [
-        decode_byte_best_effort(string, charset)
-        for string, charset in pairs
-    ]
+    strs = [decode_byte_best_effort(string, charset) for string, charset in pairs]
     return "".join(strs)
 
 
@@ -237,7 +235,6 @@ def decode_content(message: EmailMessage) -> Tuple[str, Optional[str]]:
         body = message.get_payload()
 
     return decode_byte_best_effort(body), decode_byte_best_effort(html)
-
 
 
 def decode_flags(header: bytes) -> List[Flag]:

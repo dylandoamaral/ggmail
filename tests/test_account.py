@@ -431,7 +431,7 @@ class TestAccountCreateMailbox:
 
         mailbox = logged_account.get_or_create_mailbox("Master")
         assert mailbox.label == "Master"
-        assert not imap_create_mock.called, 'method should not have been called'
+        assert not imap_create_mock.called, "method should not have been called"
 
     def test_create_mailbox_not_connected(self, account):
         with raises(NotConnected):

@@ -53,6 +53,7 @@ class GoogleOAuth2(Authentication):
                 "and ensure you granted access using gcp."
             )
 
+
 class Outlook(Authentication):
     password: SecretStr
     host: str = "outlook.office365.com"
