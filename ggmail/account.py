@@ -33,12 +33,9 @@ class Account(BaseModel):
 
     is_connected: bool = False
 
-    gmail_imap_host: str = "imap.gmail.com"
-    gmail_imap_port: int = 993
-
     def __init__(self, **data):
         super().__init__(**data)
-        self._imap = IMAP4_SSL(self.gmail_imap_host, self.gmail_imap_port)
+        self._imap = IMAP4_SSL(self.authentication.host, self.authentication.port)
 
     def __enter__(self):
         self.login()
@@ -332,6 +329,19 @@ class Account(BaseModel):
         self._imap.create(path)
 
         return mailbox
+
+    def get_or_create_mailbox(self, path: str) -> Mailbox:
+        """
+        Create a mailbox from a path, if it exists, returns the
+        existing mailbox.
+
+        :param path: The path of the mailbox to create
+        :return: The newly mailbox
+        """
+        try:
+            return self.create_mailbox(path)
+        except MailboxAlreadyExists:
+            return self.mailbox_from_path(path)
 
     def delete_mailbox(self, mailbox: Mailbox):
         """

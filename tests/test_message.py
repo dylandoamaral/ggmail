@@ -228,6 +228,17 @@ class TestMessageDecoders:
         word = "word"
         assert word == decode_byte_best_effort(word)
 
+    @patch("ggmail.message._decode_bytes")
+    def test_decode_byte_best_effort_default(self, decode_mock):
+        # One of the spam email I found being problematic.
+        # Sadly, I can't reproduce it using encode.
+        word = "Play for 𝗙𝗿𝗲𝗲 and Win for 𝗥𝗲𝗮𝗹!"
+        encoded = word.encode("utf-8")
+
+        decode_mock.side_effect = LookupError()
+
+        assert "UNKNOWN" == decode_byte_best_effort(encoded)
+
     @patch("ggmail.message.decode_header")
     def test_decode_subject(self, decode_header_mock):
         decode_header_mock.return_value = [("Subject", None)]

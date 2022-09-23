@@ -7,7 +7,7 @@
 [![versions](https://img.shields.io/pypi/pyversions/ggmail.svg)](https://github.com/dylandoamaral/ggmail)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Manage gmail account using python, forget about imap and just code what you supposed to do.
+Manage mail account using python, forget about imap and just code what you supposed to do.
 
 ## Help
 
@@ -20,10 +20,10 @@ Install using `pip install ggmail`.
 ## A Simple Example
 
 ```python
-from ggmail import Account, Login
+from ggmail import Account, Google
 from ggmail.policy import from_contains, flagged
 
-authentication = Login(username="ggmail@gmail.com", password="secret")
+authentication = Google(username="ggmail@gmail.com", password="secret")
 with Account(authentication=authentication) as account:
     inbox = account.inbox()
     mailbox = account.create_mailbox("Favorite")
@@ -43,3 +43,7 @@ https://github.com/martinrusev/imbox is less high level than ggmail. I wanted so
 ### Why not use gmail instead ?
 
 https://github.com/charlierguo/gmail seems to be dead.
+
+## You don't support my mail provider ?
+
+You can raise an issue and I will add it.

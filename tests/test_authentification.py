@@ -5,24 +5,26 @@ import pytest
 from pytest import raises
 
 from ggmail.account import Account
-from ggmail.authentication import Login, OAuth2
+from ggmail.authentication import Google, GoogleOAuth2, Outlook
 from ggmail.exception import AlreadyConnected, LoginFailed
 
 
 class TestAuthenticationLogin:
+    google = Google(username="test@gmail.com", password="secret")
+    google_oauth2 = GoogleOAuth2(username="test@gmail.com", token="secret")
+    outlook = Outlook(username="test@gmail.com", password="secret")
+
     @patch.object(IMAP4_SSL, "authenticate")
     @patch.object(IMAP4_SSL, "login")
     @pytest.mark.parametrize(
         "authentication",
         [
             pytest.param(
-                Login(username="test@gmail.com", password="secret"),
-                id="login",
+                google,
+                id="google",
             ),
-            pytest.param(
-                OAuth2(username="test@gmail.com", token="secret"),
-                id="oauth2",
-            ),
+            pytest.param(google_oauth2, id="google_oauth2"),
+            pytest.param(outlook, id="outlook"),
         ],
     )
     def test_login_success(
@@ -38,11 +40,11 @@ class TestAuthenticationLogin:
         "authentication",
         [
             pytest.param(
-                Login(username="test@gmail.com", password="secret"), id="login"
+                google,
+                id="google",
             ),
-            pytest.param(
-                OAuth2(username="test@gmail.com", token="secret"), id="oauth2"
-            ),
+            pytest.param(google_oauth2, id="google_oauth2"),
+            pytest.param(outlook, id="outlook"),
         ],
     )
     def test_login_already_connected(
@@ -60,11 +62,11 @@ class TestAuthenticationLogin:
         "authentication",
         [
             pytest.param(
-                Login(username="test@gmail.com", password="secret"), id="login"
+                google,
+                id="google",
             ),
-            pytest.param(
-                OAuth2(username="test@gmail.com", token="secret"), id="oauth2"
-            ),
+            pytest.param(google_oauth2, id="google_oauth2"),
+            pytest.param(outlook, id="outlook"),
         ],
     )
     def test_login_imap_error(

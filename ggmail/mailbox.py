@@ -20,6 +20,7 @@ class MailboxKind(Enum):
     ALL = auto()
     JUNK = auto()
     CUSTOM = auto()
+    MARKED = auto()
 
 
 class Mailbox(BaseModel):
@@ -101,7 +102,7 @@ def mailbox_factory(raw_mailbox_description: bytes, account) -> Mailbox:
     tags = raw_tags.replace(" ", "")[1:-1].split("\\")[1:]
     has_children = "HasChildren" in tags
 
-    if label == "INBOX":
+    if label.upper() == "INBOX":
         kind = MailboxKind.INBOX
         label = "Inbox"
         path = "Inbox"

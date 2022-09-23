@@ -5,13 +5,13 @@ from unittest.mock import patch
 from pytest import fixture
 
 from ggmail.account import Account
-from ggmail.authentication import Login
+from ggmail.authentication import Google
 from ggmail.message import ContentType, Message
 
 
 @fixture
 def account():
-    authentication = Login(username="test@gmail.com", password="secret")
+    authentication = Google(username="test@gmail.com", password="secret")
     return Account(authentication=authentication)
 
 

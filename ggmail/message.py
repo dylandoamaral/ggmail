@@ -168,26 +168,40 @@ class Message(BaseModel):
         return self.remove_flag_message(Flag.SEEN)
 
 
-def decode_byte_best_effort(data: bytes, charset: Optional[str] = None) -> str:
+def _decode_bytes(data: bytes, encoding: str) -> str:
+    """
+    Internal method to help data.decode to be mockable
+    """
+    return data.decode(encoding)
+
+
+def decode_byte_best_effort(data: bytes, encoding: Optional[str] = None) -> str:
     """
     Try to decode the bytes using different decoders and return UNKNOWN by default
 
     :param data: The bytes to decode
-    :param charset: The guessed charset
-    :raises UnicodeDecodeError: The message can't be decoded using one of the available decoders
+    :param encoding: The guessed encoding
     :return: The string
     """
     if not isinstance(data, bytes):
         return data
 
-    decoders = {charset} | {"utf-8", "ascii", "latin_1", "utf_16", "utf_32", "iso8859-1"}
+    base_encodings = ["utf-8", "ascii", "latin_1", "utf_16", "utf_32", "iso8859-1"]
 
-    for decoder in decoders:
+    if encoding is None:
+        encodings = base_encodings
+    else:
+        encodings = [encoding] + base_encodings
+
+    # Transform the list to a fake ordered set
+    encodings = list(dict.fromkeys(encodings))
+
+    for encoding in encodings:
         try:
-            return data.decode(decoder)
+            return _decode_bytes(data, encoding)
         except (UnicodeDecodeError, LookupError):
             continue
-    
+
     return "UNKNOWN"
 
 
@@ -199,10 +213,7 @@ def decode_subject(subject: str) -> str:
     :return: The decoded subject
     """
     pairs = decode_header(subject)
-    strs = [
-        decode_byte_best_effort(string, charset)
-        for string, charset in pairs
-    ]
+    strs = [decode_byte_best_effort(string, charset) for string, charset in pairs]
     return "".join(strs)
 
 
@@ -226,7 +237,6 @@ def decode_content(message: EmailMessage) -> Tuple[str, Optional[str]]:
     return decode_byte_best_effort(body), decode_byte_best_effort(html)
 
 
-
 def decode_flags(header: bytes) -> List[Flag]:
     """
     Decode flags from the header
@@ -235,7 +245,7 @@ def decode_flags(header: bytes) -> List[Flag]:
     :return: The message flags
     """
     raw_flags = ParseFlags(header)
-    return [Flag(decode_byte_best_effort(flag)) for flag in raw_flags]
+    return [Flag(decode_byte_best_effort(flag, "ascii")) for flag in raw_flags]
 
 
 def get_content_type(content_type: str) -> ContentType:
