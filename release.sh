@@ -7,8 +7,10 @@ if [ -n "$1" ]; then
         if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
         then
             # update the version in pyproject
-            sed "s/^version = .*$/version = \"${1#v}\"/" -i pyproject.toml
+            sed -i '' -E "s|version = \"[0-9].*\"|version = \"${1#v}\"|" pyproject.toml
             git add pyproject.toml
+            sed -i '' -E "s|__version__ = \"[0-9].*\"|__version__ = \"${1#v}\"|" ggmail/__init__.py
+            git add ggmail/__init__.py
             git commit -m "chore(release): prepare for v$1"
             git tag "v$1"
             git push --atomic origin main "v$1"
