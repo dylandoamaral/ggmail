@@ -413,6 +413,26 @@ class TestAccountCreateMailbox:
         with raises(MailboxAlreadyExists):
             logged_account.create_mailbox("Master")
 
+    @patch.object(IMAP4_SSL, "create")
+    @patch.object(Account, "mailboxes")
+    def test_get_or_create_mailbox(
+        self, account_mailboxes_mock, imap_create_mock, logged_account
+    ):
+        account_mailboxes_mock.return_value = [
+            Mailbox(
+                label="Master",
+                path="Master",
+                kind=MailboxKind.INBOX,
+                has_children=True,
+                raw=b"",
+                _account=logged_account,
+            )
+        ]
+
+        mailbox = logged_account.get_or_create_mailbox("Master")
+        assert mailbox.label == "Master"
+        assert not imap_create_mock.called, 'method should not have been called'
+
     def test_create_mailbox_not_connected(self, account):
         with raises(NotConnected):
             account.create_mailbox("")

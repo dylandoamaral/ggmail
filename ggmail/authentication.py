@@ -7,6 +7,10 @@ from .exception import LoginFailed
 
 
 class Authentication(BaseModel, ABC):
+    username: str
+    host: str
+    port: int
+
     @abstractmethod
     def login(self, imap: IMAP4):
         """
@@ -17,9 +21,10 @@ class Authentication(BaseModel, ABC):
         """
 
 
-class Login(Authentication):
-    username: str
+class Google(Authentication):
     password: SecretStr
+    host: str = "imap.gmail.com"
+    port: int = 993
 
     def login(self, imap: IMAP4):
         try:
@@ -31,9 +36,10 @@ class Login(Authentication):
             )
 
 
-class OAuth2(Authentication):
-    username: str
+class GoogleOAuth2(Authentication):
     token: SecretStr
+    host: str = "imap.gmail.com"
+    port: int = 993
 
     def login(self, imap: IMAP4):
         try:
@@ -45,4 +51,18 @@ class OAuth2(Authentication):
             raise LoginFailed(
                 "Can't login to your email account, verify your credentials "
                 "and ensure you granted access using gcp."
+            )
+
+class Outlook(Authentication):
+    password: SecretStr
+    host: str = "outlook.office365.com"
+    port: int = 993
+
+    def login(self, imap: IMAP4):
+        try:
+            imap.login(self.username, self.password.get_secret_value())
+        except IMAP4.error:
+            raise LoginFailed(
+                "Can't login to your email account, verify your credentials "
+                "and ensure you granted access to less secure app."
             )

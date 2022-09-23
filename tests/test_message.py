@@ -1,3 +1,4 @@
+from ast import Bytes
 from datetime import datetime
 from imaplib import IMAP4_SSL
 from unittest.mock import ANY, Mock, call, patch
@@ -10,6 +11,7 @@ from ggmail.flag import Flag
 from ggmail.message import (
     ContentType,
     Message,
+    _decode_bytes,
     decode_byte_best_effort,
     decode_content,
     decode_flags,
@@ -227,6 +229,18 @@ class TestMessageDecoders:
     def test_decode_byte_best_effort_ignore(self):
         word = "word"
         assert word == decode_byte_best_effort(word)
+
+
+    @patch("ggmail.message._decode_bytes")
+    def test_decode_byte_best_effort_default(self, decode_mock):
+        # One of the spam email I found being problematic.
+        # Sadly, I can't reproduce it using encode.
+        word = "Play for 𝗙𝗿𝗲𝗲 and Win for 𝗥𝗲𝗮𝗹!" 
+        encoded = word.encode("utf-8")
+
+        decode_mock.side_effect = LookupError()
+
+        assert "UNKNOWN" == decode_byte_best_effort(encoded)
 
     @patch("ggmail.message.decode_header")
     def test_decode_subject(self, decode_header_mock):
