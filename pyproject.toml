@@ -3,6 +3,14 @@ name = "ggmail"
 version = "0.4.0"
 description = "Manage gmail account using python, forget about imap and just code what you supposed to do."
 authors = ["dylandoamaral <do.amaral.dylan@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/dylandoamaral/ggmail"
+documentation = "https://github.com/dylandoamaral/ggmail/wiki"
+keywords = ["python", "library", "simple", "imap", "human", "pydantic"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.7,<4"
