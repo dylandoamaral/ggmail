@@ -168,23 +168,27 @@ class Message(BaseModel):
         return self.remove_flag_message(Flag.SEEN)
 
 
-def decode_byte_best_effort(data: bytes) -> str:
+def decode_byte_best_effort(data: bytes, charset: Optional[str] = None) -> str:
     """
-    Try to decode the bytes using different decoders
+    Try to decode the bytes using different decoders and return UNKNOWN by default
 
     :param data: The bytes to decode
+    :param charset: The guessed charset
+    :raises UnicodeDecodeError: The message can't be decoded using one of the available decoders
     :return: The string
     """
     if not isinstance(data, bytes):
         return data
 
-    decoders = ["ascii", "utf-8", "latin_1", "utf_16"]
+    decoders = {charset} | {"utf-8", "ascii", "latin_1", "utf_16", "utf_32", "iso8859-1"}
 
     for decoder in decoders:
         try:
             return data.decode(decoder)
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, LookupError):
             continue
+    
+    return "UNKNOWN"
 
 
 def decode_subject(subject: str) -> str:
@@ -196,7 +200,7 @@ def decode_subject(subject: str) -> str:
     """
     pairs = decode_header(subject)
     strs = [
-        string.decode(charset) if charset else decode_byte_best_effort(string)
+        decode_byte_best_effort(string, charset)
         for string, charset in pairs
     ]
     return "".join(strs)
@@ -222,6 +226,7 @@ def decode_content(message: EmailMessage) -> Tuple[str, Optional[str]]:
     return decode_byte_best_effort(body), decode_byte_best_effort(html)
 
 
+
 def decode_flags(header: bytes) -> List[Flag]:
     """
     Decode flags from the header
@@ -243,7 +248,7 @@ def message_factory(uid: str, raw_message_description: List[bytes], account) -> 
 
     :param uid: The uid of the message
     :param raw_message_description: The description of the message
-    :paam account: The account
+    :param account: The account
     :return: The message
     """
     raw_header, raw_message = raw_message_description
@@ -257,7 +262,7 @@ def message_factory(uid: str, raw_message_description: List[bytes], account) -> 
     content_type = get_content_type(message.get_content_maintype())
     flags = decode_flags(raw_header)
 
-    return Message(
+    message = Message(
         uid=uid,
         from_=from_,
         to=to,
@@ -269,3 +274,5 @@ def message_factory(uid: str, raw_message_description: List[bytes], account) -> 
         flags=flags,
         _account=account,
     )
+
+    return message
