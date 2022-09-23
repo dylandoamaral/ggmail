@@ -4,4 +4,4 @@ from .flag import Flag  # noqa
 from .mailbox import Mailbox  # noqa
 from .message import Message  # noqa
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"

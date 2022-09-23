@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ggmail"
-version = "0.4.0"
+version = "0.4.1"
 description = "Manage gmail account using python, forget about imap and just code what you supposed to do."
 authors = ["dylandoamaral <do.amaral.dylan@gmail.com>"]
 license = "MIT"
